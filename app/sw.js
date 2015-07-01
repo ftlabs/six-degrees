@@ -73,7 +73,7 @@ if (!Cache.prototype.addAll) {
 }
 
 function isLocal(url) {
-	return (new URL(url).host === location.host);
+	return (new URL(url).hostname === location.hostname);
 }
 
 self.addEventListener('install', function(event) {
@@ -90,7 +90,7 @@ self.addEventListener('fetch', function(event) {
 		return fetch(event.request);
 	}
 
-	var cache_key = URL(r.url).hostname === API_URL ? API_CACHE_NAME : REMOTE_CACHE_NAME;
+	var cache_key = new URL(event.request.url).hostname === API_URL ? API_CACHE_NAME : REMOTE_CACHE_NAME;
 
 	// Cache api requests
 	var resp = caches.match(event.request)
@@ -108,7 +108,7 @@ self.addEventListener('fetch', function(event) {
 		})
 		.then(function (fetchResponse) {
 			caches.open(cache_key).then(function(cache) {
-				console.log('Caching: ', fetchResponse.url, "in", cache_key);
+				console.log('Caching: ', event.request.url, "in", cache_key);
 				cache.put(event.request, fetchResponse);
 			});
 			return fetchResponse.clone();
