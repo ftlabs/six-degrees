@@ -1,8 +1,16 @@
 /* global Cache, caches, fetch, Request, self */
 /* jshint browser:true */
 
-var API_CACHE_NAME = 'api_cache_v1';
-var API_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 *3; // 3 Days
+var expires = {};
+
+// URLs from this host are from the api so should be cached seperately
+var API_URL = "ftlabs-sapi-capi-slurp.herokuapp.com";
+
+var API_CACHE_NAME = 'api_cache_v1'; // Cache for api requests origami etc
+expires[API_CACHE_NAME] = 1000 * 60 * 60 * 24 * 3; // 3 Days
+
+var REMOTE_CACHE_NAME = 'remote_cache_v1'; // Cache for remote assets origami etc
+expires[REMOTE_CACHE_NAME] = 1000 * 60 * 60 * 24 *3 ; // 3 Days
 
 // Inline Cache polyfill
 if (!Cache.prototype.add) {
@@ -82,13 +90,15 @@ self.addEventListener('fetch', function(event) {
 		return fetch(event.request);
 	}
 
+	var cache_key = URL(r.url).hostname === API_URL ? API_CACHE_NAME : REMOTE_CACHE_NAME;
+
 	// Cache api requests
 	var resp = caches.match(event.request)
 		.then(function(r) {
 			var age = Date.now() - (new Date(r.headers.get('Date')).getTime());
 
 			// If it is stale then get a fresh one instead.
-			if (r.headers.get('Date') && age > API_CACHE_MAX_AGE) {
+			if (r.headers.get('Date') && age > expires(cache_key)) {
 				throw Error('Stale Cache');
 			}
 			return r;
@@ -97,8 +107,8 @@ self.addEventListener('fetch', function(event) {
 			return fetch(event.request);
 		})
 		.then(function (fetchResponse) {
-			caches.open(API_CACHE_NAME).then(function(cache) {
-				console.log('Caching: ', fetchResponse.url);
+			caches.open(cache_key).then(function(cache) {
+				console.log('Caching: ', fetchResponse.url, "in", cache_key);
 				cache.put(event.request, fetchResponse);
 			});
 			return fetchResponse.clone();
