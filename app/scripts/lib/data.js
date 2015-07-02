@@ -55,7 +55,7 @@ function getOrCreatePerson(options) {
 }
 
 function fetchPerson(person, maxDepth=1, currentDepth=0) {
-	return fetch(`http://ftlabs-sapi-capi-slurp.herokuapp.com/cooccurrences_as_counts/${person.id}/by_type/people`)
+	return fetch(`https://ftlabs-sapi-capi-slurp.herokuapp.com/cooccurrences_as_counts/${person.id}/by_type/people`)
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
 		.then(json => json.cooccurrences_as_counts.people)
@@ -86,7 +86,7 @@ function fetchPerson(person, maxDepth=1, currentDepth=0) {
 		});
 }
 
-module.exports = fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
+module.exports = fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
 	.then(response => response.text())
 	.then(string => JSON.parse(string))
 	.then(json => json.metadatums_by_type.people)
