@@ -53,7 +53,7 @@ function getOrCreatePerson(options) {
 	return np;
 }
 
-function fetchPerson(person) {
+function fetchPerson(person, maxDepth=1, currentDepth=0) {
 	return fetch(`http://ftlabs-sapi-capi-slurp.herokuapp.com/cooccurrences_as_counts/${person.id}/by_type/people`)
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
@@ -75,7 +75,7 @@ function fetchPerson(person) {
 			return list.map(p => {
 				let np = getOrCreatePerson(p);
 				np.connect(person);
-				if (populus.length < MAX_POPULATION) return fetchPerson(np);
+				if (populus.length < MAX_POPULATION) return fetchPerson(np, maxDepth, currentDepth+1);
 				return null;
 			});
 		})
@@ -114,7 +114,7 @@ module.exports = fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/b
 		});
 	})
 	.then(name => getOrCreatePerson({name}))
-	.then(fetchPerson)
+	.then(fetchPerson, 2)
 	.then(function (peopleArray) {
 
 		console.log(peopleArray);
