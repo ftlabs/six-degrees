@@ -225,6 +225,19 @@ gulp.task('wiredep', () => {
 		.pipe(gulp.dest('app'));
 });
 
+gulp.task('ship', function () {
+	return gulp.src('./dist/**/*')
+		.pipe(require('gulp-gh-pages')({
+			origin: 'ssh://ada@ssh.1am.club/~/public_html/sappy/.git',
+			remoteUrl: 'ssh://ada@ssh.1am.club/~/public_html/sappy/.git',
+			branch: 'master'
+		}));
+});
+
+gulp.task('deploy', ['build'], function () {
+	return gulp.start('ship');
+});
+
 gulp.task('build', ['copy-scripts', 'html', 'images', 'fonts', 'extras'], () => {
 	return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });

@@ -38,5 +38,8 @@
         "single"
       ]
     }
+  },
+  "dependencies": {
+    "gulp-gh-pages": "^0.5.2"
   }
 }
