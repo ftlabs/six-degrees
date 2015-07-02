@@ -8,7 +8,7 @@
 // then fetch theirs
 
 const ui = require('./ui');
-const MAX_POPULATION = 100;
+const MAX_POPULATION = 10;
 let selectedPerson;
 let populus = [];
 
@@ -32,12 +32,12 @@ class Person {
 		this.connections.add(targetPerson);
 
 		// Add self to raget if not already added
-		if (targetPerson.connectedTo(this)) {
+		if (!targetPerson.isConnectedTo(this)) {
 			targetPerson.connect(this);
 		}
 	}
 
-	connectedTo(person) {
+	isConnectedTo(person) {
 		return this.connections.has(person);
 	}
 }
@@ -72,7 +72,15 @@ function fetchPerson(person) {
 		.then(function (list) {
 
 			// add new people to the people list and sort out
-			for (let p of list) getOrCreatePerson(p);
+			return list.map(p => {
+				let np = getOrCreatePerson(p);
+				np.connect(person);
+				if (populus.length < MAX_POPULATION) return fetchPerson(np);
+				return null;
+			});
+		})
+		.then(promiseList => Promise.all(promiseList))
+		.then(function () {
 			return populus;
 		});
 }
@@ -132,12 +140,16 @@ module.exports = fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/b
 		}
 
 		// Link up nodes
-		for(let i = 0; i < peopleArray.length; i++) {
-			links.push({
-				source: 0,
-				target: i,
-				weight: 0.01
-			});
+		for(var i = 0; i < peopleArray.length; i++) {
+			for(var j = 0; j < i; j++) {
+				if(peopleArray[j].isConnectedTo(peopleArray[i])) {
+					links.push({
+						source : i,
+						target : j,
+						weight : 0.01
+					});
+				}
+			}
 			labelAnchorLinks.push({
 				source: i * 2,
 				target: i * 2 + 1,

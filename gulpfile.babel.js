@@ -26,7 +26,7 @@ gulp.task('styles', () => {
 		.pipe(reload({stream: true}));
 });
 
-gulp.task('browserify', ['lint'], function () {
+gulp.task('browserify', function () {
 	try {
 		mkdirSync('.tmp');
 	} catch (e) {
