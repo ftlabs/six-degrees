@@ -118,8 +118,6 @@ module.exports = fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/
 	.then(fetchPerson, 2)
 	.then(function (peopleArray) {
 
-		console.log(peopleArray);
-
 		const labelAnchors = [];
 		const labelAnchorLinks = [];
 		const links = [];
