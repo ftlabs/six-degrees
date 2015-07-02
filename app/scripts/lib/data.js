@@ -26,6 +26,7 @@ class Person {
 		this.label = name.slice(7);
 		this.id = name;
 		this.connections = new Set();
+		this.connectionWeights = new Map();
 	}
 
 	connect(targetPerson) {

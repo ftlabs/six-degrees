@@ -149,6 +149,14 @@ gulp.task('extras', () => {
 	}).pipe(gulp.dest('dist'));
 });
 
+gulp.task('copy-scripts', ['browserify'], () => {
+	return gulp.src([
+		'.tmp/**/*.js'
+	])
+	.pipe($.uglify())
+	.pipe(gulp.dest('dist'));
+});
+
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
 
 gulp.task('serve', ['styles', 'browserify', 'fonts'], () => {
@@ -217,7 +225,7 @@ gulp.task('wiredep', () => {
 		.pipe(gulp.dest('app'));
 });
 
-gulp.task('build', ['browserify', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['copy-scripts', 'html', 'images', 'fonts', 'extras'], () => {
 	return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
