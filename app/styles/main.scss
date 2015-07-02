@@ -10,3 +10,14 @@ body {
 		opacity: 1;
 	}
 }
+
+.modal {
+	padding: 1em;
+	box-shadow: 0 0 7em -1em black;
+	background-color: white;
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: 4em;
+}

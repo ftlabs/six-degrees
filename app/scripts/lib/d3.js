@@ -16,8 +16,6 @@ module.exports = function ({
 	place = 'body'
 } = {}) {
 
-	console.log(width, height, place);
-
 	const vis = d3
 		.select(place)
 		.append('svg:svg')
