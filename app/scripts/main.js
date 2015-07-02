@@ -29,12 +29,9 @@ if ('serviceWorker' in navigator) {
 		console.log('Offlining Availble');
 		document.body.classList.add('sw-ready');
 
-		Promise.all([
-			addScript('http://mbostock.github.com/d3/d3.js?2.6.0'),
-			addScript('http://mbostock.github.com/d3/d3.layout.js?2.6.0'),
-			addScript('http://mbostock.github.com/d3/d3.geom.js?2.6.0')
-		]).then(function () {
-			addScript('./demo.js');
-		});
+		addScript('https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js')
+			.then(function () {
+				addScript('./scripts/demo.js');
+			});
 	}
 }
