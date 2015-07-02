@@ -29,9 +29,11 @@ if ('serviceWorker' in navigator) {
 		console.log('Offlining Availble');
 		document.body.classList.add('sw-ready');
 
-		addScript('https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js')
-			.then(function () {
-				addScript('./scripts/demo.js');
-			});
+		Promise.all([
+			addScript('https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js'),
+			addScript('https://polyfill.webservices.ft.com/v1/polyfill.min.js?features=fetch,default,Array.from')
+		]).then(function () {
+			addScript('./scripts/demo.js');
+		});
 	}
 }
