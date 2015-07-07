@@ -93,7 +93,7 @@ function fetchJSON(...urls) {
 
 module.exports = fetchJSON(
 		'https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people',
-		'http://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'
+		'https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'
 	)
 	.then(([peopleJson, islandsJSON]) => [
 		peopleJson.metadatums_by_type.people.filter(p => islandsJSON.isolateds.indexOf(p) === -1),
