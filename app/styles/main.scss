@@ -4,11 +4,6 @@
 body {
 	margin: 0;
 	font-family: BentonSans, helvetica, sans;
-	opacity: 0.5;
-
-	&.sw-ready {
-		opacity: 1;
-	}
 }
 
 .modal {

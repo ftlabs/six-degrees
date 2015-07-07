@@ -40,6 +40,7 @@
     }
   },
   "dependencies": {
-    "gulp-gh-pages": "^0.5.2"
+    "gulp-gh-pages": "^0.5.2",
+    "pako": "^0.2.7"
   }
 }
