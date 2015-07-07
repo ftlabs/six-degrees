@@ -11,6 +11,9 @@ const ui = require('./ui');
 
 const populus = [];
 
+let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
+if (personSearch && personSearch[1]) personSearch = personSearch[1].replace(/\+/g, " ");
+
 class Person {
 	constructor(personData) {
 		this.name = personData.name,
@@ -77,17 +80,25 @@ function getOrCreatePerson(options) {
 	return np;
 }
 
-function fetchJSON(url) {
-	return fetch(url)
+function fetchJSON(...urls) {
+	const modal = ui.modal('.o-techdocs-main', `Loading:<br />${urls.join('<br />')}`);
+	return Promise.all(urls.map(url => fetch(url)
 		.then(response => response.text())
-		.then(string => JSON.parse(string));
+		.then(string => JSON.parse(string))
+	)).then(results => {
+		modal.remove();
+		return results;
+	});
 }
 
-module.exports = Promise.all([
-		fetchJSON('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people'),
-		fetchJSON('http://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'),
+module.exports = fetchJSON(
+		'https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people',
+		'http://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'
+	)
+	.then(([peopleJson, islandsJSON]) => [
+		peopleJson.metadatums_by_type.people.filter(p => islandsJSON.isolateds.indexOf(p) === -1),
+		islandsJSON
 	])
-	.then(([peopleJson, islandsJSON]) => [peopleJson.metadatums_by_type.people, islandsJSON])
 	.then(function ([people, islandsJSON]) {
 
 		const unifiedData = {};
@@ -121,19 +132,18 @@ module.exports = Promise.all([
 	})
 	.then(function (people) {
 
-		return [people, ui.modal('.o-techdocs-main', `
+		if (personSearch) return people['people:' + personSearch];
+
+		const modal = ui.modal('.o-techdocs-main', `
 			<form>
 				<label for="people">Select a starting person
-				<input list="people" name="people">
+				<input list="people" name="people" id="people-list">
 				<datalist id="people">
 					${Object.keys(people).map(p => '<option value="' + people[p].name + '">').join('')}
 				</datalist></label>
-				<submit>
-			</form>`)];
-	})
-	.then(function ([people, modal]) {
-		modal.remove();
-		return people[`people:Yoko Ono`];
+				<input type="submit" value="Submit">
+			</form>`);
+
 		return new Promise(function (resolve) {
 			modal.el.querySelector('form').addEventListener('submit', function (e) {
 				e.preventDefault();
