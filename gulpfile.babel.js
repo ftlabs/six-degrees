@@ -150,11 +150,10 @@ gulp.task('extras', () => {
 	}).pipe(gulp.dest('dist'));
 });
 
-gulp.task('copy-scripts', ['browserify'], () => {
+gulp.task('copy-tmp', ['browserify'], () => {
 	return gulp.src([
-		'.tmp/**/*.js'
+		'.tmp/**/*.{js,css}'
 	])
-	.pipe($.uglify())
 	.pipe(gulp.dest('dist'));
 });
 
@@ -239,7 +238,7 @@ gulp.task('deploy', ['build'], function () {
 	return gulp.start('ship');
 });
 
-gulp.task('build', ['copy-scripts', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['copy-tmp', 'html', 'images', 'fonts', 'extras'], () => {
 	return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
