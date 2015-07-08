@@ -43,7 +43,7 @@
 		</header>
 
 		<div class="o-techdocs-layout">
-			<div class="o-techdocs-main o-techdocs-main--fullwidth o-techdocs-content">
+			<div class="o-techdocs-main o-techdocs-main--fullwidth o-techdocs-content erdos">
 
 				<datalist id="data-people"></datalist>
 
@@ -51,14 +51,17 @@
 
 				<form id='erdos-form'>
 					<label>
-						From <input list="data-people" name="start">
+						From <input list="data-people" id='txtstartperson' name="start">
 					</label>
 					<label>
-						To <input list="data-people" name="end">
+						To <input list="data-people" id='txtendperson' name="end">
 					</label>
 					<input type='submit'>
 				</form>
 
+				<aside class='errormsg' id='errormsg'></aside>
+
+				<section id='result'></section>
 
 
 

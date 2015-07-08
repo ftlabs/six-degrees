@@ -4,11 +4,6 @@
 body {
 	margin: 0;
 	font-family: BentonSans, helvetica, sans;
-	opacity: 0.5;
-
-	&.sw-ready {
-		opacity: 1;
-	}
 }
 
 .modal {
@@ -20,4 +15,38 @@ body {
 	left: 50%;
 	transform: translateX(-50%);
 	margin-bottom: 4em;
+}
+
+.errormsg {
+	display: none;
+}
+
+.errormsg.visible {
+	display: block;
+}
+
+.erdos {
+	#erdos-form {
+		margin-bottom: 40px;
+	}
+	.person {
+		border: 1px solid #777;
+		list-style-type: none;
+		display: inline-block;
+		padding: 3px 5px;
+		border-radius: 2px;
+		font-weight: bold;
+	}
+	.articles {
+		margin: 0 10px 0 50px;
+		padding: 1px 0 1px 20px;
+		list-style-type: none;
+		border-left: 2px dashed black;
+		li {
+			margin: 15px 0;
+			p {
+				margin: 0
+			}
+		}
+	}
 }
