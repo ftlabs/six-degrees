@@ -5,6 +5,7 @@
 
 'use strict';
 
+
 module.exports = function ({
 	nodes,
 	labelAnchors,
@@ -32,7 +33,7 @@ module.exports = function ({
 		.links(links)
 		.gravity(1)
 		.linkDistance(50)
-		.charge(-1000)
+		.charge(-100000/nodes.length)
 		.linkStrength(l => l.weight * 10);
 
 	window.force = force;
@@ -60,7 +61,8 @@ module.exports = function ({
 		.attr('class', 'link')
 		.style('stroke', '#000')
 		.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
-		.style('display', 'none');
+		.style('display', 'none')
+		.style('zIndex', -1);
 
 	const node = vis.selectAll('g.node')
 		.data(force.nodes())
@@ -84,7 +86,8 @@ module.exports = function ({
 		.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
 		.style('fill', x => x.isRoot ? '#F64' : '#555')
 		.style('stroke', '#FFF')
-		.style('stroke-width', 3);
+		.style('stroke-width', 3)
+		.style('zIndex', 0);
 
 	node.call(force.drag);
 
@@ -100,13 +103,12 @@ module.exports = function ({
 		.attr('class', 'anchorNode');
 
 	anchorNode.append('svg:circle').attr('r', 0).style('fill', '#FFF');
-	const nodeText = anchorNode.append('svg:text')
+	const nodeText = anchorNode
+		.append('svg:text')
 		.text(function(d, i) {
 			return i % 2 === 0 ? '' : d.node.label;
 		})
 		.style('fill', '#555')
-		.style('font-family', 'Arial')
-		.style('font-size', 12)
 		.style('display', 'none');
 
 	const updateLink = function() {
