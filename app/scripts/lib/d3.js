@@ -5,6 +5,7 @@
 
 'use strict';
 
+
 module.exports = function ({
 	nodes,
 	labelAnchors,
@@ -15,6 +16,9 @@ module.exports = function ({
 	height = 500,
 	place = 'body'
 } = {}) {
+
+	nodes[0].x = width / 2;
+	nodes[0].y = height / 2;
 
 	const vis = d3
 		.select(place)
@@ -29,9 +33,10 @@ module.exports = function ({
 		.links(links)
 		.gravity(1)
 		.linkDistance(50)
-		.charge(-3000)
-		.linkStrength(x => x.weight * 10);
+		.charge(-100000 / nodes.length)
+		.linkStrength(l => l.weight * 10);
 
+	window.force = force;
 
 	force.start();
 
@@ -54,8 +59,10 @@ module.exports = function ({
 		.enter()
 		.append('svg:line')
 		.attr('class', 'link')
-		.style('stroke', '#AAA')
-		.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+		.style('stroke', '#000')
+		.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
+		.style('display', 'none')
+		.style('zIndex', -1);
 
 	const node = vis.selectAll('g.node')
 		.data(force.nodes())
@@ -64,18 +71,23 @@ module.exports = function ({
 		.attr('class', 'node')
 		.on('mouseover', function (n) {
 			n.drawLine = true;
-			link.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+			n.getConnections().forEach(p => p. drawLine = true);
+			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
 		})
 		.on('mouseout', function (n) {
 			n.drawLine = false;
-			link.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+			n.getConnections().forEach(p => p. drawLine = false);
+			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
 		});
 
 	node.append('svg:circle')
-		.attr('r', x => x.style === 'big' ? 8 : 5)
-		.style('fill', '#555')
+		.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
+		.style('fill', x => x.isRoot ? '#F64' : '#555')
 		.style('stroke', '#FFF')
-		.style('stroke-width', 3);
+		.style('stroke-width', 3)
+		.style('zIndex', 0);
 
 	node.call(force.drag);
 
@@ -91,13 +103,13 @@ module.exports = function ({
 		.attr('class', 'anchorNode');
 
 	anchorNode.append('svg:circle').attr('r', 0).style('fill', '#FFF');
-	anchorNode.append('svg:text')
+	const nodeText = anchorNode
+		.append('svg:text')
 		.text(function(d, i) {
 			return i % 2 === 0 ? '' : d.node.label;
 		})
 		.style('fill', '#555')
-		.style('font-family', 'Arial')
-		.style('font-size', 12);
+		.style('display', 'none');
 
 	const updateLink = function() {
 		this.attr('x1', function(d) {

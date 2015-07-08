@@ -1,8 +1,9 @@
 // bower:scss
 // endbower
 
-body {
+body, html {
 	margin: 0;
+	height: 100%;
 	font-family: BentonSans, helvetica, sans;
 }
 
@@ -27,6 +28,22 @@ body {
 
 .errormsg.visible {
 	display: block;
+}
+
+.anchorNode {
+	fill: none;
+	fill-opacity: 1;
+	stroke: #FFF;
+	stroke-width: 0.5px;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-opacity: 1;
+	stroke-alignment: outer;
+	z-index: 10;
+	font-size: 10pt;
+	font-weight: bold;
+	pointer-events: none;
+	font-family: BentonSans, helvetica, sans;
 }
 
 .erdos {

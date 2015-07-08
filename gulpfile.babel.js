@@ -150,11 +150,10 @@ gulp.task('extras', () => {
 	}).pipe(gulp.dest('dist'));
 });
 
-gulp.task('copy-scripts', ['browserify'], () => {
+gulp.task('copy-tmp', ['browserify'], () => {
 	return gulp.src([
-		'.tmp/**/*.js'
+		'.tmp/**/*.{js,css}'
 	])
-	.pipe($.uglify())
 	.pipe(gulp.dest('dist'));
 });
 
@@ -229,8 +228,8 @@ gulp.task('wiredep', () => {
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
 		.pipe(require('gulp-gh-pages')({
-			origin: 'ssh://git@git.heroku.com/ftlabs-slurpage-sappy.git',
-			remoteUrl: 'ssh://git@git.heroku.com/ftlabs-slurpage-sappy.git',
+			origin: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
+			remoteUrl: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
 			branch: 'master'
 		}));
 });
@@ -239,7 +238,7 @@ gulp.task('deploy', ['build'], function () {
 	return gulp.start('ship');
 });
 
-gulp.task('build', ['copy-scripts', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['copy-tmp', 'html', 'images', 'fonts', 'extras'], () => {
 	return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
