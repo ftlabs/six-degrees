@@ -228,8 +228,8 @@ gulp.task('wiredep', () => {
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
 		.pipe(require('gulp-gh-pages')({
-			origin: 'ssh://git@heroku.com/ftlabs-slurpage-sappy.git',
-			remoteUrl: 'ssh://git@heroku.com/ftlabs-slurpage-sappy.git',
+			origin: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
+			remoteUrl: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
 			branch: 'master'
 		}));
 });
