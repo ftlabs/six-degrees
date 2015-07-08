@@ -24,6 +24,17 @@ fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
 			let to = tagify(dom.txtendperson.value);
 			if (from && to) renderErdos(from, to);
 		});
+
+		var qs = location.search.slice(1).split('&').reduce(function (acc, el) {
+			var [key, val] = el.split('=');
+			acc[key] = val;
+			return acc;
+		}, {});
+		if ('from' in qs && 'to' in qs) {
+			dom.txtstartperson.value = detagify(qs.from);
+			dom.txtendperson.value = detagify(qs.to);
+			renderErdos(qs.from, qs.to);
+		}
 	})
 ;
 
@@ -37,14 +48,24 @@ function renderErdos(from, to) {
 			dom.result.innerHTML = `<li class='person'>${detagify(from)}</li>`
 			 	+ data.fleshed_out_chain.map(rel => {
 					return `<ul class='articles'>`
-						+ rel.articles.map(article => `<li><a href='${article.location.uri}'>${article.title}</a><p>${article.excerpt}</p></li>`).join('')
+						+ rel.articles.map(article => {
+							let img = '';
+							if (article.es_data && article.es_data.primary_img) {
+								img = `<img src='${article.es_data.primary_img.url}' alt='${article.es_data.primary_img.alt}'>`;
+							}
+							let pattern = new RegExp('('+detagify(rel.from)+'|'+detagify(rel.to)+')', 'ig');
+							let highlighted = article.excerpt.replace(pattern, '<strong>$1</strong>');
+							return `<li>${img}<a href='${article.location.uri}'>${article.title}</a><p>${highlighted}</p></li>`;
+						}).join('')
 						+ `</ul>`
 						+ `<li class='person'>${detagify(rel.to)}</li>`
 					;
 				}).join('')
 			;
+			history.replaceState({}, '', location.href.replace(/^(http[^\?]+)(\?.*)?$/, '$1?from='+from+'&to='+to));
 		})
 		.catch(function(e) {
+			console.warn(e);
 			dom.errormsg.innerHTML = `There is no chain between ${detagify(from)} and ${detagify(to)}.`;
 			dom.errormsg.classList.add('visible');
 		})

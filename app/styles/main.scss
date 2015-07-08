@@ -17,6 +17,10 @@ body {
 	margin-bottom: 4em;
 }
 
+.o-header__primary__right {
+	text-align: right;
+}
+
 .errormsg {
 	display: none;
 }
@@ -28,6 +32,16 @@ body {
 .erdos {
 	#erdos-form {
 		margin-bottom: 40px;
+		label {
+			display: inline-block;
+		}
+		input[type=text] {
+			width: 250px;
+			max-width: 250px
+		}
+	}
+	#result {
+		margin-left: 200px;
 	}
 	.person {
 		border: 1px solid #777;
@@ -36,14 +50,26 @@ body {
 		padding: 3px 5px;
 		border-radius: 2px;
 		font-weight: bold;
+		transform: translateX(-50%);
+		box-shadow: 1px 1px 8px 1px rgba(0, 0, 0, 0.2);
 	}
 	.articles {
-		margin: 0 10px 0 50px;
+		margin: 0 10px 0 0;
 		padding: 1px 0 1px 20px;
 		list-style-type: none;
 		border-left: 2px dashed black;
 		li {
-			margin: 15px 0;
+			clear: both;
+			margin: 25px 0;
+			position: relative;
+			img {
+				position: absolute;
+				top: 0;
+				left: 0;
+				transform: translateX(calc(-100% - 40px));
+				max-height: 80px;
+			}
+			a { font-weight: bold; }
 			p {
 				margin: 0
 			}

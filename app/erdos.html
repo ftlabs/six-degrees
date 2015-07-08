@@ -49,21 +49,30 @@
 
 				<h2>Find an Erdos chain!</h2>
 
+				<p>Mathematician <a href=''>Paul Erdős</a> collaborated with so many peers that the <a href='https://en.wikipedia.org/wiki/Erd%C5%91s_number'>Erdős number</a> came to be known as the 'collaborative distance' between Erdős and any other academic.  It's more well known cousin, the <a href='https://en.wikipedia.org/wiki/Six_Degrees_of_Kevin_Bacon#Bacon_numbers'>Bacon number</a>, came 25 years later.</p>
+
+				<p>Use this tool to find out how noteworthy people are connected via news and features published by the Financial Times.  To keep things fresh and dynamic, we only consider articles published in the last 100 days.  In that time, we have written about <span id='people-count'></span> people.  What's the longest chain you can find?</p>
+
 				<form id='erdos-form'>
-					<label>
-						From <input list="data-people" id='txtstartperson' name="start">
+					<label class="o-forms-label">
+						From <input type='text' class="o-forms-text" list="data-people" id='txtstartperson' name="start">
 					</label>
-					<label>
-						To <input list="data-people" id='txtendperson' name="end">
+					<label class="o-forms-label">
+						to <input type='text' class="o-forms-text" list="data-people" id='txtendperson' name="end">
 					</label>
-					<input type='submit'>
+					<input class="o-buttons o-buttons--big" type='submit'>
 				</form>
 
 				<aside class='errormsg' id='errormsg'></aside>
 
 				<section id='result'></section>
 
-
+				<p>Stuck?  Try:</p>
+				<ul>
+					<li><a href='/erdos.html?from=people:Marine%20Le%20Pen&amp;to=people:Jeff%20Bezos'>Marine Le Pen to Jeff Bezos</a></li>
+					<li><a href='/erdos.html?from=people:Mark%20Carney&amp;to=people:Theresa%20May'>Mark Carney to Theresa May</a></li>
+					<li><a href='/erdos.html?from=people:Alec%20Baldwin&amp;to=people:Beyoncé'>Alec Baldwin to Beyoncé</a></li>
+				</ul>
 
 			</div><!-- /o-techdocs-main -->
 		</div><!-- /o-techdocs-layout -->
