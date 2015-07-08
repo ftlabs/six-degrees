@@ -17,8 +17,8 @@ module.exports = function ({
 	place = 'body'
 } = {}) {
 
-	nodes[0].x = width/2;
-	nodes[0].y = height/2;
+	nodes[0].x = width / 2;
+	nodes[0].y = height / 2;
 
 	const vis = d3
 		.select(place)
@@ -33,7 +33,7 @@ module.exports = function ({
 		.links(links)
 		.gravity(1)
 		.linkDistance(50)
-		.charge(-100000/nodes.length)
+		.charge(-100000 / nodes.length)
 		.linkStrength(l => l.weight * 10);
 
 	window.force = force;
@@ -73,13 +73,13 @@ module.exports = function ({
 			n.drawLine = true;
 			n.getConnections().forEach(p => p. drawLine = true);
 			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
-			nodeText.style('display', n => n.node.drawLine ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
 		})
 		.on('mouseout', function (n) {
 			n.drawLine = false;
 			n.getConnections().forEach(p => p. drawLine = false);
 			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
-			nodeText.style('display', n => n.node.drawLine ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
 		});
 
 	node.append('svg:circle')
