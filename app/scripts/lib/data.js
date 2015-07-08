@@ -23,6 +23,7 @@ class Person {
 		this.isAmbassador = personData.isAmbassador,
 		this.island = personData.island;
 		this.islandIndex = personData.islandIndex;
+		this.style = 'default';
 
 		//unpack island
 		if (typeof this.island.connections.unpacked === 'undefined') {
@@ -154,7 +155,9 @@ module.exports = fetchJSON(
 			});
 		});
 	})
-	.then(personData => getOrCreatePerson(personData).getConnections(2))
+	.then(personData => getOrCreatePerson(personData))
+	.then(person => (person.style = 'big', person))
+	.then(person => person.getConnections(2))
 	.then(connectedPeeps => Array.from(connectedPeeps))
 	.then(connectedPeeps => {
 
@@ -198,9 +201,9 @@ module.exports = fetchJSON(
 
 		return {
 			nodes: connectedPeeps,
+			links,
 			labelAnchors,
-			labelAnchorLinks,
-			links
+			labelAnchorLinks
 		};
 
 	})

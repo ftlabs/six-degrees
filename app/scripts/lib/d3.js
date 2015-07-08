@@ -30,13 +30,12 @@ module.exports = function ({
 		.gravity(1)
 		.linkDistance(50)
 		.charge(-3000)
-		.linkStrength(function(x) {
-			return x.weight * 10;
-		});
+		.linkStrength(x => x.weight * 10);
 
 
 	force.start();
 
+	// Attach the labels.
 	const force2 = d3.layout
 		.force()
 		.nodes(labelAnchors)
@@ -55,16 +54,25 @@ module.exports = function ({
 		.enter()
 		.append('svg:line')
 		.attr('class', 'link')
-		.style('stroke', '#CCC');
+		.style('stroke', '#AAA')
+		.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
 
 	const node = vis.selectAll('g.node')
 		.data(force.nodes())
 		.enter()
 		.append('svg:g')
-		.attr('class', 'node');
+		.attr('class', 'node')
+		.on("mouseover", function (n) {
+			n.drawLine = true;
+			link.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+		})
+		.on("mouseout", function (n) {
+			n.drawLine = false;
+			link.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+		});
 
 	node.append('svg:circle')
-		.attr('r', 5)
+		.attr('r', x => x.style === 'big' ? 8 : 5)
 		.style('fill', '#555')
 		.style('stroke', '#FFF')
 		.style('stroke-width', 3);
@@ -74,7 +82,7 @@ module.exports = function ({
 
 	const anchorLink = vis
 		.selectAll('line.anchorLink')
-		.data(labelAnchorLinks);//.enter().append('svg:line').attr('class', 'anchorLink').style('stroke', '#999');
+		.data(labelAnchorLinks);
 
 	const anchorNode = vis.selectAll('g.anchorNode')
 		.data(force2.nodes())
@@ -108,20 +116,24 @@ module.exports = function ({
 		this.attr('transform', function(d) {
 			return 'translate(' + d.x + ',' + d.y + ')';
 		});
-
 	};
 
 	force.on('tick', function() {
 
+		// keep the labels connected to thde nodes
 		force2.start();
 
 		node.call(updateNode);
 
 		anchorNode.each(function(d, i) {
 			if(i % 2 === 0) {
+
+				// Attatch one end of the Label Link to the node
 				d.x = d.node.x;
 				d.y = d.node.y;
+				d.fixed = true;
 			} else {
+
 				const b = this.childNodes[1].getBBox();
 
 				const diffX = d.x - d.node.x;
