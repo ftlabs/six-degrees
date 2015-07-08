@@ -6,7 +6,8 @@ var dom = {
 	txtstartperson: document.querySelector('#txtstartperson'),
 	txtendperson: document.querySelector('#txtendperson'),
 	errormsg: document.querySelector('#errormsg'),
-	result: document.querySelector('#result')
+	result: document.querySelector('#result'),
+	peoplecount: document.querySelector('#people-count'),
 }
 
 fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
@@ -18,6 +19,7 @@ fetch('http://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
 		// ['people:Joe Bloggs', 'people:Adam Smith', 'people:Milton Friedman', ...]
 
 		dom.datalist.innerHTML = people.map(p => '<option value="'+detagify(p)+'">').join('');
+		dom.peoplecount.innerHTML = people.length;
 		dom.form.addEventListener('submit', function (e) {
 			e.preventDefault();
 			let from = tagify(dom.txtstartperson.value);
