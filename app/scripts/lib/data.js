@@ -12,6 +12,8 @@ const ui = require('./ui');
 
 const populus = [];
 
+const MIN_NUMBER_OF_NODES = 50;
+
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
 if (personSearch && personSearch[1]) {
@@ -37,23 +39,26 @@ class Person {
 
 	getConnections(maxDepth=1, depth=1) {
 
-		const collectedPeople = new Set();
+		// Update own set of connections.
+		if (!this.connections) {
+			this.connectionWeights = new Map();
 
-		this.connectionWeights = new Map();
+			// create people for each connection.
+			this.connections = new Set(
+				this.island.connections.unpacked[this.islandIndex]
+					.map((numberOfConnections, i) => {
+						if (numberOfConnections === 0) {
+							return false;
+						}
+						const connectedPerson = getOrCreatePerson(this.island.islanders[i]);
+						this.connectionWeights.set(connectedPerson, numberOfConnections);
+						return connectedPerson;
+					})
+					.filter(p => p !== false)
+			);
+		}
 
-		// create people for each connection.
-		this.connections = new Set(
-			this.island.connections.unpacked[this.islandIndex]
-				.map((numberOfConnections, i) => {
-					if (numberOfConnections === 0) {
-						return false;
-					}
-					const connectedPerson = getOrCreatePerson(this.island.islanders[i]);
-					this.connectionWeights.set(connectedPerson, numberOfConnections);
-					return connectedPerson;
-				})
-				.filter(p => p !== false)
-		);
+		const collectedPeople = new Set([this]);
 
 		this.connections.forEach(c => collectedPeople.add(c));
 
@@ -164,14 +169,20 @@ module.exports = fetchJSON(
 		});
 	})
 	.then(personData => getOrCreatePerson(personData))
-	.then(person => (person.style = 'big', person))
-	.then(person => person.getConnections(2))
-	.then(connectedPeeps => Array.from(connectedPeeps))
-	.then(connectedPeeps => {
+	.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
+	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
+	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
+	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
+	.then(([people, rootPerson]) => [Array.from(people), rootPerson])
+	.then(([connectedPeeps, rootPerson]) => {
 
 		const labelAnchors = [];
 		const labelAnchorLinks = [];
 		const links = [];
+
+		// Give special styling to the root node
+		rootPerson.isRoot = true;
+		rootPerson.fixed = true;
 
 		if (connectedPeeps.length === 1) {
 			throw Error(`Not enough people connected`);

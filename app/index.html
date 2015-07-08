@@ -43,20 +43,8 @@
 		</header>
 
 		<div class="o-techdocs-layout">
-			<div class="o-techdocs-main o-techdocs-main--fullwidth o-techdocs-content">
-
-				<h1>Capi Sapi Mappy</h1>
-
-			</div><!-- /o-techdocs-main -->
-		</div><!-- /o-techdocs-layout -->
-
-		<footer class="o-techdocs-footer">
-			<div class="o-techdocs-footer__inner">
-				<p class="o-techdocs-footer__secondary"><!--<a href="http://github.com/financial-times">View project on GitHub</a>--></p>
-				<p>&#xA9; THE FINANCIAL TIMES LTD. FT and 'Financial Times' are
-					trademarks of The Financial Times Ltd.</p>
-			</div>
-		</footer>
+			<div class="o-techdocs-main o-techdocs-main--fullwidth o-techdocs-content"></div><!-- /o-techdocs-main -->
+		</div>
 
 		<!-- build:js scripts/main.js -->
 		<script src="scripts/main.js"></script>
