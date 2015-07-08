@@ -1,4 +1,5 @@
 // generated on 2015-07-01 using generator-gulp-webapp 1.0.2
+
 import gulp from 'gulp';
 import gulpLoadPlugins from 'gulp-load-plugins';
 import browserSync from 'browser-sync';
@@ -228,8 +229,8 @@ gulp.task('wiredep', () => {
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
 		.pipe(require('gulp-gh-pages')({
-			origin: 'ssh://ada@ssh.1am.club/~/public_html/sappy/.git',
-			remoteUrl: 'ssh://ada@ssh.1am.club/~/public_html/sappy/.git',
+			origin: 'ssh://git@git.heroku.com/ftlabs-slurpage-sappy.git',
+			remoteUrl: 'ssh://git@git.heroku.com/ftlabs-slurpage-sappy.git',
 			branch: 'master'
 		}));
 });

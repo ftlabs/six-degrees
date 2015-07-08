@@ -1,7 +1,7 @@
 'use strict';
 
 /* jshint browser:true */
-require("babel/polyfill");
+require('babel/polyfill');
 require('./lib/data.js')
 	.then(function(data) {
 		require('./lib/d3.js')(data, {

@@ -1,4 +1,5 @@
 /* global fetch, atob */
+/*jshint esnext:true */
 
 'use strict';
 
@@ -12,15 +13,18 @@ const ui = require('./ui');
 const populus = [];
 
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
-if (personSearch && personSearch[1]) personSearch = personSearch[1].replace(/\+/g, " ");
+
+if (personSearch && personSearch[1]) {
+	personSearch = personSearch[1].replace(/\+/g, ' ');
+}
 
 class Person {
 	constructor(personData) {
-		this.name = personData.name,
-		this.label = personData.name,
-		this.numberOfOccurences = personData.numberOfOccurences,
-		this.id = personData.id,
-		this.isAmbassador = personData.isAmbassador,
+		this.name = personData.name;
+		this.label = personData.name;
+		this.numberOfOccurences = personData.numberOfOccurences;
+		this.id = personData.id;
+		this.isAmbassador = personData.isAmbassador;
 		this.island = personData.island;
 		this.islandIndex = personData.islandIndex;
 		this.style = 'default';
@@ -41,8 +45,9 @@ class Person {
 		this.connections = new Set(
 			this.island.connections.unpacked[this.islandIndex]
 				.map((numberOfConnections, i) => {
-					if (numberOfConnections === 0) return false;
-
+					if (numberOfConnections === 0) {
+						return false;
+					}
 					const connectedPerson = getOrCreatePerson(this.island.islanders[i]);
 					this.connectionWeights.set(connectedPerson, numberOfConnections);
 					return connectedPerson;
@@ -80,6 +85,7 @@ function getOrCreatePerson(options) {
 	populus.push(np);
 	return np;
 }
+
 
 function fetchJSON(...urls) {
 	const modal = ui.modal('.o-techdocs-main', `Loading:<br />${urls.join('<br />')}`);
@@ -133,16 +139,18 @@ module.exports = fetchJSON(
 	})
 	.then(function (people) {
 
-		if (personSearch) return people['people:' + personSearch];
+		if (personSearch) {
+			return people['people:' + personSearch];
+		}
 
 		const modal = ui.modal('.o-techdocs-main', `
 			<form>
-				<label for="people">Select a starting person
-				<input list="people" name="people" id="people-list">
-				<datalist id="people">
+				<label for='people'>Select a starting person
+				<input list='people' name='people' id='people-list'>
+				<datalist id='people'>
 					${Object.keys(people).map(p => '<option value="' + people[p].name + '">').join('')}
 				</datalist></label>
-				<input type="submit" value="Submit">
+				<input type='submit' value='Submit'>
 			</form>`);
 
 		return new Promise(function (resolve) {
@@ -182,13 +190,13 @@ module.exports = fetchJSON(
 		}
 
 		// Link up nodes
-		for(var i = 0; i < nPeople; i++) {
+		for(let i = 0; i < nPeople; i++) {
 			for(var j = 0; j < i; j++) {
 				if(connectedPeeps[j].isConnectedTo(connectedPeeps[i])) {
 					links.push({
-						source : i,
-						target : j,
-						weight : connectedPeeps[j].connectionWeights.get(connectedPeeps[i])/connectedPeeps[j].island.maxConnections
+						source: i,
+						target: j,
+						weight: connectedPeeps[j].connectionWeights.get(connectedPeeps[i]) / connectedPeeps[j].island.maxConnections
 					});
 				}
 			}

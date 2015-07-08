@@ -55,20 +55,20 @@ module.exports = function ({
 		.append('svg:line')
 		.attr('class', 'link')
 		.style('stroke', '#AAA')
-		.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+		.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
 
 	const node = vis.selectAll('g.node')
 		.data(force.nodes())
 		.enter()
 		.append('svg:g')
 		.attr('class', 'node')
-		.on("mouseover", function (n) {
+		.on('mouseover', function (n) {
 			n.drawLine = true;
-			link.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+			link.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
 		})
-		.on("mouseout", function (n) {
+		.on('mouseout', function (n) {
 			n.drawLine = false;
-			link.style("display", l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
+			link.style('display', l => (l.source.drawLine || l.target.drawLine) ? 'inline' : 'none');
 		});
 
 	node.append('svg:circle')
