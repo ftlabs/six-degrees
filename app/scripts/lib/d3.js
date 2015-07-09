@@ -8,7 +8,11 @@
 const settings = {
 	display: {
 		description: 'Display Settings',
-		showAllNamesAndLinks: {
+		showAllNames: {
+			value: 0,
+			range: [0, 1]
+		},
+		showAllLinks: {
 			value: 0,
 			range: [0, 1]
 		}
@@ -53,7 +57,7 @@ const settings = {
 	gravity: {
 		description: 'Force drawing all nodes to the center',
 		strength: {
-			value: 0,
+			value: 0.5,
 			range: [0, 10, 0.5]
 		}
 	},
@@ -82,25 +86,6 @@ module.exports = function ({
 		.size([width, height])
 		.nodes(nodes)
 		.links(links);
-
-	function recalcForce() {
-		console.log(settings);
-		force
-			.gravity(settings.gravity.strength.value)
-			.linkDistance(l => settings.linkDistance.coefficient.value *
-				Math.pow(l.weight, -settings.linkDistance.affectedByCoocurence.value) *
-				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value)
-			)
-			.charge(-1 *
-				settings.charge.coefficient.value /
-				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value)
-			)
-			.linkStrength(l => settings.linkStrength.coefficient.value *
-				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
-			)
-			.start();
-	}
-	recalcForce();
 
 	// Start with some initial inwards motion
 	force.gravity(1);
@@ -136,16 +121,22 @@ module.exports = function ({
 		.append('svg:g')
 		.attr('class', 'node')
 		.on('mouseover', function (n) {
-			n.drawDetails = true;
-			n.getConnections().forEach(p => p. drawDetails = true);
-			link.style('display', l => (l.source.drawDetails && l.target.drawDetails) ? 'inline' : 'none');
-			nodeText.style('display', nt => nt.drawDetails ? 'inline' : 'none');
+			n.drawName = true;
+			n.drawLink = true;
+			n.getConnections().forEach(p => p. drawName = true);
+			n.getConnections().forEach(p => p. drawLink = true);
+			updateDisplay();
 		})
 		.on('mouseout', function (n) {
-			n.drawDetails = false;
-			n.getConnections().forEach(p => p. drawDetails = false);
-			link.style('display', l => (l.source.drawDetails && l.target.drawDetails) ? 'inline' : 'none');
-			nodeText.style('display', nt => nt.drawDetails ? 'inline' : 'none');
+			if (!settings.display.showAllNames.value) {
+				n.drawName = false;
+				n.getConnections().forEach(p => p. drawName = false);
+			}
+			if (!settings.display.showAllLinks.value) {
+				n.drawLink = false;
+				n.getConnections().forEach(p => p. drawLink = false);
+			}
+			updateDisplay();
 		});
 
 	node.append('svg:circle')
@@ -185,6 +176,37 @@ module.exports = function ({
 		node.call(updateNode);
 		link.call(updateLink);
 	});
+
+	function updateDisplay() {
+		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
+		nodeText.style('display', nt => nt.drawName ? 'inline' : 'none');
+	}
+
+	function applySettings(displayOnly) {
+
+		nodes.forEach(p => p.drawName = !!settings.display.showAllNames.value);
+		nodes.forEach(p => p.drawLink = !!settings.display.showAllLinks.value);
+		updateDisplay();
+
+		if (displayOnly) return;
+
+		force
+			.gravity(settings.gravity.strength.value)
+			.linkDistance(l => settings.linkDistance.coefficient.value *
+				Math.pow(l.weight, -settings.linkDistance.affectedByCoocurence.value) *
+				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value)
+			)
+			.charge(-1 *
+				settings.charge.coefficient.value /
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value)
+			)
+			.linkStrength(l => settings.linkStrength.coefficient.value *
+				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
+			)
+			.start();
+	}
+
+	applySettings();
 
 	(function buildUi() {
 		document.querySelector('.sappy-settings .o-techdocs-card__context')
@@ -232,7 +254,7 @@ module.exports = function ({
 					const inputSlider = e.currentTarget;
 					settings[inputSlider.dataset.actionname][inputSlider.dataset.tweakname].value = inputSlider.value;
 					inputSlider.nextSibling.innerHTML = inputSlider.value;
-					recalcForce();
+					applySettings(inputSlider.dataset.actionname === 'display');
 				}, false);
 			});
 
@@ -240,10 +262,8 @@ module.exports = function ({
 			.forEach(function (el) {
 				el.addEventListener('change', e => {
 					const checkbox = e.currentTarget;
-					console.log(settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value);
 					settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value = checkbox.checked ? 1 : 0;
-					console.log(settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value);
-					recalcForce();
+					applySettings(checkbox.dataset.actionname === 'display');
 				}, false);
 			});
 
