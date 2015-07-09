@@ -5,11 +5,62 @@
 
 'use strict';
 
+const settings = {
+	display: {
+		description: 'Display Settings',
+		showAllNamesAndLinks: {
+			value: 0,
+			range: [0, 1]
+		}
+	},
+	charge: {
+		description: 'Repulsive force between each node',
+		proportionalToNumberOfNodes: {
+			value: 0,
+			range: [0, 1]
+		},
+		coefficient: {
+			value: 1000,
+			range: [50, 10000, 50]
+		}
+	},
+	linkDistance: {
+		description: 'Optimal distance between connected nodes',
+		proportionalToNumberOfNodes: {
+			value: 0,
+			range: [0, 1]
+		},
+		coefficient: {
+			value: 20,
+			range: [0, 400, 5]
+		},
+		affectedByCoocurence: {
+			value: 0,
+			range: [0, 1]
+		}
+	},
+	linkStrength: {
+		description: 'Force applied to maintain that distance',
+		coefficient: {
+			value: 10,
+			range: [10, 300, 10]
+		},
+		affectedByCoocurence: {
+			value: 0,
+			range: [0, 1]
+		},
+	},
+	gravity: {
+		description: 'Force drawing all nodes to the center',
+		strength: {
+			value: 0,
+			range: [0, 10, 0.5]
+		}
+	},
+};
 
 module.exports = function ({
 	nodes,
-	labelAnchors,
-	labelAnchorLinks,
 	links
 }, {
 	width = 960,
@@ -30,28 +81,43 @@ module.exports = function ({
 		.force()
 		.size([width, height])
 		.nodes(nodes)
-		.links(links)
-		.gravity(1)
-		.linkDistance(l => l.weight * 50)
-		.charge(-100000 / nodes.length)
-		.linkStrength(10);
+		.links(links);
 
-	window.force = force;
+	function recalcForce() {
+		console.log(settings);
+		force
+			.gravity(settings.gravity.strength.value)
+			.linkDistance(l => settings.linkDistance.coefficient.value *
+				Math.pow(l.weight, -settings.linkDistance.affectedByCoocurence.value) *
+				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value)
+			)
+			.charge(-1 *
+				settings.charge.coefficient.value /
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value)
+			)
+			.linkStrength(l => settings.linkStrength.coefficient.value *
+				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
+			)
+			.start();
+	}
+	recalcForce();
 
-	force.start();
+	// Start with some initial inwards motion
+	force.gravity(1);
 
-	// Attach the labels.
-	const force2 = d3.layout
-		.force()
-		.nodes(labelAnchors)
-		.links(labelAnchorLinks)
-		.gravity(0)
-		.linkDistance(0)
-		.linkStrength(8)
-		.charge(-100)
-		.size([width, height]);
+	// Reduce it
+	setTimeout(function () {
+		force
+			.gravity(0.5)
+			.start();
+	}, 500);
 
-	force2.start();
+	// Remove gravity
+	setTimeout(function () {
+		force
+			.gravity(settings.gravity.strength.value)
+			.start();
+	}, 1500);
 
 	const link = vis
 		.selectAll('line.link')
@@ -70,16 +136,16 @@ module.exports = function ({
 		.append('svg:g')
 		.attr('class', 'node')
 		.on('mouseover', function (n) {
-			n.drawLine = true;
-			n.getConnections().forEach(p => p. drawLine = true);
-			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
-			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
+			n.drawDetails = true;
+			n.getConnections().forEach(p => p. drawDetails = true);
+			link.style('display', l => (l.source.drawDetails && l.target.drawDetails) ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.drawDetails ? 'inline' : 'none');
 		})
 		.on('mouseout', function (n) {
-			n.drawLine = false;
-			n.getConnections().forEach(p => p. drawLine = false);
-			link.style('display', l => (l.source.drawLine && l.target.drawLine) ? 'inline' : 'none');
-			nodeText.style('display', nt => nt.node.drawLine ? 'inline' : 'none');
+			n.drawDetails = false;
+			n.getConnections().forEach(p => p. drawDetails = false);
+			link.style('display', l => (l.source.drawDetails && l.target.drawDetails) ? 'inline' : 'none');
+			nodeText.style('display', nt => nt.drawDetails ? 'inline' : 'none');
 		});
 
 	node.append('svg:circle')
@@ -87,27 +153,13 @@ module.exports = function ({
 		.style('fill', x => x.isRoot ? '#F64' : '#555')
 		.style('stroke', '#FFF')
 		.style('stroke-width', 3)
-		.style('zIndex', 0);
+		.style('zIndex', -1);
 
 	node.call(force.drag);
 
-
-	const anchorLink = vis
-		.selectAll('line.anchorLink')
-		.data(labelAnchorLinks);
-
-	const anchorNode = vis.selectAll('g.anchorNode')
-		.data(force2.nodes())
-		.enter()
-		.append('svg:g')
-		.attr('class', 'anchorNode');
-
-	anchorNode.append('svg:circle').attr('r', 0).style('fill', '#FFF');
-	const nodeText = anchorNode
+	const nodeText = node
 		.append('svg:text')
-		.text(function(d, i) {
-			return i % 2 === 0 ? '' : d.node.label;
-		})
+		.text(d => d.label)
 		.style('fill', '#555')
 		.style('display', 'none');
 
@@ -121,7 +173,6 @@ module.exports = function ({
 		}).attr('y2', function(d) {
 			return d.target.y;
 		});
-
 	};
 
 	const updateNode = function() {
@@ -131,41 +182,83 @@ module.exports = function ({
 	};
 
 	force.on('tick', function() {
-
-		// keep the labels connected to thde nodes
-		force2.start();
-
 		node.call(updateNode);
-
-		anchorNode.each(function(d, i) {
-			if(i % 2 === 0) {
-
-				// Attatch one end of the Label Link to the node
-				d.x = d.node.x;
-				d.y = d.node.y;
-				d.fixed = true;
-			} else {
-
-				const b = this.childNodes[1].getBBox();
-
-				const diffX = d.x - d.node.x;
-				const diffY = d.y - d.node.y;
-
-				const dist = Math.sqrt(diffX * diffX + diffY * diffY);
-
-				let shiftX = b.width * (diffX - dist) / (dist * 2);
-				shiftX = Math.max(-b.width, Math.min(0, shiftX));
-				const shiftY = 5;
-				this.childNodes[1].setAttribute('transform', 'translate(' + shiftX + ',' + shiftY + ')');
-			}
-		});
-
-
-		anchorNode.call(updateNode);
-
 		link.call(updateLink);
-		anchorLink.call(updateLink);
-
 	});
 
+	(function buildUi() {
+		document.querySelector('.sappy-settings .o-techdocs-card__context')
+			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+
+		document.querySelector('.sappy-people .o-techdocs-card__context')
+			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+
+		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
+
+		let slidersHTML = "";
+
+		for (let i in settings) {
+        	if (settings.hasOwnProperty(i)) {
+				let actionName = i;
+				let actionSettings = settings[i];
+
+				slidersHTML += `<div class="o-techdocs-card__title sappy-settings_slider-title">${camelToPretty(actionName)}</div>`;
+				slidersHTML += `<div class="o-techdocs-card__subtitle">${actionSettings.description}</div>`;
+
+				for (let j in actionSettings) {
+	        		if (j !== 'description' && actionSettings.hasOwnProperty(j)) {
+						let tweakName = j;
+						let tweakSettings = actionSettings[j];
+
+						slidersHTML += `
+							<label class="sappy-settings_slider" for="${actionName + '_' + tweakName}">
+							${camelToPretty(tweakName)}${tweakName === 'proportionalToNumberOfNodes' ? ' (' + nodes.length + ')' : ''}`;
+
+						if (tweakSettings.range.length === 2 && tweakSettings.range[0] === 0 && tweakSettings.range[1] === 1) {
+							slidersHTML += `<input id="${actionName + '_' + tweakName}" name="${actionName + '_' + tweakName}" type="checkbox" data-actionname="${actionName}" data-tweakname="${tweakName}" value="${tweakSettings.value}" ${tweakSettings.value === 1 ? 'checked' : ''}/></label>`;
+						} else {
+							slidersHTML += `<br /><input id="${actionName + '_' + tweakName}" name="${actionName + '_' + tweakName}" type="range" data-actionname="${actionName}" data-tweakname="${tweakName}" value="${tweakSettings.value}" min="${tweakSettings.range[0]}" max="${tweakSettings.range[1]}" step="${tweakSettings.range[2] || 1}"/><span class="value">${tweakSettings.value}</span></label>`;
+						}
+					}
+				}
+			}
+		}
+
+		document.querySelector('.sappy-settings_settings-sliders').innerHTML = slidersHTML;
+
+		[...document.querySelectorAll('.sappy-settings_settings-sliders input[type="range"]')]
+			.forEach(function (el) {
+				el.addEventListener('input', e => {
+					const inputSlider = e.currentTarget;
+					settings[inputSlider.dataset.actionname][inputSlider.dataset.tweakname].value = inputSlider.value;
+					inputSlider.nextSibling.innerHTML = inputSlider.value;
+					recalcForce();
+				}, false);
+			});
+
+		[...document.querySelectorAll('.sappy-settings_settings-sliders input[type="checkbox"]')]
+			.forEach(function (el) {
+				el.addEventListener('change', e => {
+					const checkbox = e.currentTarget;
+					console.log(settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value);
+					settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value = checkbox.checked ? 1 : 0;
+					console.log(settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value);
+					recalcForce();
+				}, false);
+			});
+
+		document.querySelector('.sappy-settings_people-list-target').innerHTML = nodes
+			.map(p => `<div data-id="${p.id}" class="sappy-settings_person-selector">${p.name}</div>`)
+			.join('\n');
+
+		[...document.querySelectorAll('.sappy-settings_person-selector')]
+			.forEach(function (el) {
+				el.addEventListener('click', e => {
+					const person = e.currentTarget.dataset.id;
+					console.log(person);
+				});
+			});
+
+
+	})();
 };

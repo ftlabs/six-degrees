@@ -174,7 +174,8 @@ gulp.task('serve', ['styles', 'browserify', 'fonts'], () => {
 	gulp.watch([
 		'app/*.html',
 		'app/images/**/*',
-		'.tmp/fonts/**/*'
+		'.tmp/fonts/**/*',
+		'.tmp/scripts/**/*',
 	]).on('change', reload);
 
 	gulp.watch('app/styles/**/*.scss', ['styles']);

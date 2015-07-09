@@ -176,8 +176,6 @@ module.exports = fetchJSON(
 	.then(([people, rootPerson]) => [Array.from(people), rootPerson])
 	.then(([connectedPeeps, rootPerson]) => {
 
-		const labelAnchors = [];
-		const labelAnchorLinks = [];
 		const links = [];
 
 		// Give special styling to the root node
@@ -190,16 +188,6 @@ module.exports = fetchJSON(
 
 		const nPeople = connectedPeeps.length;
 
-		// Create nodes
-		for(let i = 0; i < nPeople; i++) {
-			labelAnchors.push({
-				node: connectedPeeps[i]
-			});
-			labelAnchors.push({
-				node: connectedPeeps[i]
-			});
-		}
-
 		// Link up nodes
 		for(let i = 0; i < nPeople; i++) {
 			for(var j = 0; j < i; j++) {
@@ -211,18 +199,11 @@ module.exports = fetchJSON(
 					});
 				}
 			}
-			labelAnchorLinks.push({
-				source: i * 2,
-				target: i * 2 + 1,
-				weight: 1
-			});
 		}
 
 		return {
 			nodes: connectedPeeps,
-			links,
-			labelAnchors,
-			labelAnchorLinks
+			links
 		};
 
 	})
