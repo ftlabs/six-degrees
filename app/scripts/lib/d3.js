@@ -32,9 +32,9 @@ module.exports = function ({
 		.nodes(nodes)
 		.links(links)
 		.gravity(1)
-		.linkDistance(50)
+		.linkDistance(l => l.weight * 50)
 		.charge(-100000 / nodes.length)
-		.linkStrength(l => l.weight * 10);
+		.linkStrength(10);
 
 	window.force = force;
 
