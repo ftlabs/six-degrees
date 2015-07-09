@@ -64,6 +64,7 @@ const settings = {
 };
 
 module.exports = function ({
+	people,
 	nodes,
 	links
 }, {
@@ -74,10 +75,12 @@ module.exports = function ({
 
 	nodes[0].x = width / 2;
 	nodes[0].y = height / 2;
+	nodes[0].fixed = true;
 
-	const vis = d3
+	const svg = d3
 		.select(place)
 		.append('svg:svg')
+		.attr('class', 'd3-svg')
 		.attr('width', width)
 		.attr('height', height);
 
@@ -90,69 +93,84 @@ module.exports = function ({
 	// Start with some initial inwards motion
 	force.gravity(1);
 
-	// Reduce it
-	setTimeout(function () {
-		force
-			.gravity(0.5)
-			.start();
-	}, 500);
-
-	// Remove gravity
+	// Restore gravity
 	setTimeout(function () {
 		force
 			.gravity(settings.gravity.strength.value)
 			.start();
 	}, 1500);
 
-	const link = vis
-		.selectAll('line.link')
-		.data(links)
-		.enter()
-		.append('svg:line')
-		.attr('class', 'link')
-		.style('stroke', '#000')
-		.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
-		.style('display', 'none')
-		.style('zIndex', -1);
 
-	const node = vis.selectAll('g.node')
-		.data(force.nodes())
-		.enter()
-		.append('svg:g')
-		.attr('class', 'node')
-		.on('mouseover', function (n) {
-			n.drawName = true;
-			n.drawLink = true;
-			n.getConnections().forEach(p => p. drawName = true);
-			n.getConnections().forEach(p => p. drawLink = true);
-			updateDisplay();
-		})
-		.on('mouseout', function (n) {
-			if (!settings.display.showAllNames.value) {
-				n.drawName = false;
-				n.getConnections().forEach(p => p. drawName = false);
-			}
-			if (!settings.display.showAllLinks.value) {
-				n.drawLink = false;
-				n.getConnections().forEach(p => p. drawLink = false);
-			}
-			updateDisplay();
-		});
+	let node = svg.selectAll('g.node');
+	let link = svg.selectAll('g.link');
+	let nodeText;
 
-	node.append('svg:circle')
-		.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
-		.style('fill', x => x.isRoot ? '#F64' : '#555')
-		.style('stroke', '#FFF')
-		.style('stroke-width', 3)
-		.style('zIndex', -1);
+	function updateDisplay() {
+		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
+		nodeText.style('display', nt => nt.drawName ? 'inline' : 'none');
+	}
 
-	node.call(force.drag);
+	function renderData() {
 
-	const nodeText = node
-		.append('svg:text')
-		.text(d => d.label)
-		.style('fill', '#555')
-		.style('display', 'none');
+		if (nodeText) nodeText.remove();
+
+		link = link.data(force.links());
+		link.enter()
+			.append('svg:line')
+			.attr('class', 'link')
+			.style('stroke', '#000')
+			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
+			.style('display', 'none')
+			.style('zIndex', -1);
+		link.exit().remove();
+
+		node = node.data(force.nodes());
+		node
+			.enter()
+			.append('svg:g')
+			.attr('class', 'node');
+
+		node
+			.append('svg:circle')
+			.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
+			.style('fill', (x, i) => i === 0 ? '#F64' : '#555')
+			.style('stroke', '#FFF')
+			.style('stroke-width', 3)
+			.style('zIndex', -1)
+			.on('mouseover', function (n) {
+				n.drawName = true;
+				n.drawLink = true;
+				n.getConnections().forEach(p => p. drawName = true);
+				n.getConnections().forEach(p => p. drawLink = true);
+				updateDisplay();
+			})
+			.on('mouseout', function (n) {
+				if (!settings.display.showAllNames.value) {
+					n.drawName = false;
+					n.getConnections().forEach(p => p. drawName = false);
+				}
+				if (!settings.display.showAllLinks.value) {
+					n.drawLink = false;
+					n.getConnections().forEach(p => p. drawLink = false);
+				}
+				updateDisplay();
+			});
+
+		nodeText = node
+			.append('svg:text')
+			.text(d => d.label)
+			.style('fill', '#555')
+			.style('display', 'none');
+
+		node.call(force.drag);
+
+		node.exit().remove();
+
+		force.start();
+
+		buildUi();
+	}
+	renderData();
 
 	const updateLink = function() {
 		this.attr('x1', function(d) {
@@ -176,11 +194,6 @@ module.exports = function ({
 		node.call(updateNode);
 		link.call(updateLink);
 	});
-
-	function updateDisplay() {
-		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
-		nodeText.style('display', nt => nt.drawName ? 'inline' : 'none');
-	}
 
 	function applySettings(displayOnly) {
 
@@ -208,7 +221,7 @@ module.exports = function ({
 
 	applySettings();
 
-	(function buildUi() {
+	function buildUi() {
 		document.querySelector('.sappy-settings .o-techdocs-card__context')
 			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
@@ -275,10 +288,49 @@ module.exports = function ({
 			.forEach(function (el) {
 				el.addEventListener('click', e => {
 					const person = e.currentTarget.dataset.id;
-					console.log(person);
+					window.getConnectionsForAPerson(person).then(data => {
+
+						// Reset the rootnode
+						nodes[0].x = undefined;
+						nodes[0].y = undefined;
+						nodes[0].fixed = undefined;
+
+						links.splice(0);
+						links.push(...data.links);
+						nodes.splice(0);
+						nodes.push(...data.nodes);
+
+						nodes[0].x = width / 2;
+						nodes[0].y = height / 2;
+						nodes[0].fixed = true;
+
+						renderData();
+					});
+				});
+				el.addEventListener('mouseenter', e => {
+
+					// Find the matching node and behave like it does on mouseover
+					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
+					n.drawName = true;
+					n.drawLink = true;
+					n.getConnections().forEach(p => p. drawName = true);
+					n.getConnections().forEach(p => p. drawLink = true);
+					updateDisplay();
+				});
+				el.addEventListener('mouseleave', e => {
+
+					// Find the matching node and behave like it does on mouseout
+					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
+					if (!settings.display.showAllNames.value) {
+						n.drawName = false;
+						n.getConnections().forEach(p => p. drawName = false);
+					}
+					if (!settings.display.showAllLinks.value) {
+						n.drawLink = false;
+						n.getConnections().forEach(p => p. drawLink = false);
+					}
+					updateDisplay();
 				});
 			});
-
-
-	})();
+	};
 };

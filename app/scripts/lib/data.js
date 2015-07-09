@@ -10,6 +10,7 @@
 const pako = require('pako');
 const ui = require('./ui');
 
+const unifiedData = {};
 const populus = [];
 
 const MIN_NUMBER_OF_NODES = 50;
@@ -103,6 +104,47 @@ function fetchJSON(...urls) {
 	});
 }
 
+function getConnectionsForAPerson(id) {
+	return Promise.resolve(unifiedData[id])
+		.then(personData => getOrCreatePerson(personData))
+		.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
+		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
+		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
+		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
+		.then(([people, rootPerson]) => [Array.from(people), rootPerson])
+		.then(([connectedPeeps, rootPerson]) => {
+
+			const links = [];
+
+			if (connectedPeeps.length === 1) {
+				throw Error(`Not enough people connected`);
+			}
+
+			const nPeople = connectedPeeps.length;
+
+			// Link up nodes
+			for(let i = 0; i < nPeople; i++) {
+				for(var j = 0; j < i; j++) {
+					if(connectedPeeps[j].isConnectedTo(connectedPeeps[i])) {
+						links.push({
+							source: i,
+							target: j,
+							weight: connectedPeeps[j].connectionWeights.get(connectedPeeps[i]) / connectedPeeps[j].island.maxConnections
+						});
+					}
+				}
+			}
+
+			return {
+				nodes: connectedPeeps,
+				links
+			};
+
+		});
+}
+
+window.getConnectionsForAPerson = getConnectionsForAPerson;
+
 module.exports = fetchJSON(
 		'https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people',
 		'https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'
@@ -112,8 +154,6 @@ module.exports = fetchJSON(
 		islandsJSON
 	])
 	.then(function ([people, islandsJSON]) {
-
-		const unifiedData = {};
 
 		people.map(function (p) {
 			unifiedData[p] = {
@@ -145,7 +185,7 @@ module.exports = fetchJSON(
 	.then(function (people) {
 
 		if (personSearch) {
-			return people['people:' + personSearch];
+			return 'people:' + personSearch;
 		}
 
 		const modal = ui.modal('.o-techdocs-main', `
@@ -163,50 +203,12 @@ module.exports = fetchJSON(
 				e.preventDefault();
 				if (e.target.elements[0].value) {
 					modal.remove();
-					resolve(people[`people:${e.target.elements[0].value}`]);
+					resolve(`people:${e.target.elements[0].value}`);
 				}
 			});
 		});
 	})
-	.then(personData => getOrCreatePerson(personData))
-	.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
-	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
-	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
-	.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
-	.then(([people, rootPerson]) => [Array.from(people), rootPerson])
-	.then(([connectedPeeps, rootPerson]) => {
-
-		const links = [];
-
-		// Give special styling to the root node
-		rootPerson.isRoot = true;
-		rootPerson.fixed = true;
-
-		if (connectedPeeps.length === 1) {
-			throw Error(`Not enough people connected`);
-		}
-
-		const nPeople = connectedPeeps.length;
-
-		// Link up nodes
-		for(let i = 0; i < nPeople; i++) {
-			for(var j = 0; j < i; j++) {
-				if(connectedPeeps[j].isConnectedTo(connectedPeeps[i])) {
-					links.push({
-						source: i,
-						target: j,
-						weight: connectedPeeps[j].connectionWeights.get(connectedPeeps[i]) / connectedPeeps[j].island.maxConnections
-					});
-				}
-			}
-		}
-
-		return {
-			nodes: connectedPeeps,
-			links
-		};
-
-	})
+	.then(getConnectionsForAPerson)
 	.catch(function (e) {
 		ui.modal('.o-techdocs-main', `Error: ${e.message}`);
 		throw e;

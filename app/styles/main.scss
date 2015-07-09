@@ -16,6 +16,11 @@ body, html {
 	left: 50%;
 	transform: translateX(-50%);
 	margin-bottom: 4em;
+	z-index: 10;
+}
+
+.d3-svg {
+	position: fixed;
 }
 
 .o-header__primary__right {
@@ -102,6 +107,7 @@ body, html {
 	top: 0;
 	right: 0;
 	max-width: 18em;
+	z-index: 5;
 
 	.collapse-trigger {
 		cursor: pointer;
