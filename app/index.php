@@ -5,7 +5,7 @@
 		<meta charset="utf-8">
 		<meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
 
-		<title>Sappy Cappy Slappy</title>
+		<title>Sapi Capi Mapi</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 
 		<script>
@@ -48,9 +48,5 @@
 				<a href="/erdos.html">Erdos Paths</a>
 			</div>
 		</div>
-
-		<!-- build:js scripts/main.js -->
-		<script src="scripts/main.js"></script>
-		<!-- endbuild -->
 	</body>
 </html>

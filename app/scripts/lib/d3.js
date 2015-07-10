@@ -229,6 +229,7 @@ module.exports = function ({
 		labelNode
 			.append('svg:text')
 			.text(d => d.hasLabel ? d.node.label : '')
+			.attr('class', 'd3-label')
 			.style('fill', '#555');
 
 		labelNode.exit().remove();
