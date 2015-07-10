@@ -20,6 +20,10 @@ const settings = {
 		"zoom (log scale)": {
 			value: 0,
 			range: [-3, 3, 0.1]
+		},
+		"Don't let rest": {
+			value: 1,
+			range: [0, 1]
 		}
 	},
 	charge: {
@@ -119,9 +123,9 @@ module.exports = function ({
 		.nodes(labelNodes)
 		.links(labelLinks)
 		.gravity(0)
-		.linkDistance(3)
-		.linkStrength(1)
-		.charge(-800)
+		.linkDistance(0)
+		.linkStrength(3)
+		.charge(d => d.hasLabel ? -1000 : 0)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
@@ -148,8 +152,8 @@ module.exports = function ({
 
 		nodes.forEach(n => {
 			if (!n.labelConfig) {
-				const source = {node: n, x: n.x || 0, y: n.y || 0};
-				const target = {node: n, x: n.x || 0, y: n.y || 0, hasLabel: true, label:n.label};
+				const source = {node: n, x: width / 2 , y: height / 2 };
+				const target = {node: n, x: width / 2 , y: height / 2, hasLabel: true, label: n.label};
 
 				n.labelConfig = {
 					source,
@@ -167,7 +171,7 @@ module.exports = function ({
 			.append('svg:line')
 			.attr('class', 'link')
 			.style('stroke', '#000')
-			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
+			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('display', 'none')
 			.style('zIndex', -1);
 		link.exit().remove();
@@ -227,7 +231,7 @@ module.exports = function ({
 		labelLink
 			.enter()
 			.append('svg:line')
-			.style('stroke', '#000')
+			.style('stroke', '#00C')
 			.style('opacity', 0.2);
 
 		labelLink.exit().remove();
@@ -252,7 +256,7 @@ module.exports = function ({
 
 		labelNode.exit().remove();
 
-		force2.start().alpha(0);
+		force2.start().alpha(energy);
 
 		labelNode.each(function(d) {
 
@@ -283,14 +287,18 @@ module.exports = function ({
 
 	force.on('tick', function() {
 
-		force.alpha(energy);
-		force2.alpha(energy);
+		if (settings.display["Don't let rest"].value) {
+
+			// keep the simulation always running.
+			force.alpha(energy);
+		}
 
 		node.call(updateNode);
 		link.call(updateLink);
 	});
 
 	force2.on('tick', function() {
+		force2.alpha(energy);
 
 		labelNode.each(function(d, i) {
 			if(i % 2 === 0) {
