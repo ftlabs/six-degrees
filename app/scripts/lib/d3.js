@@ -4,6 +4,7 @@
  */
 
 'use strict';
+const energy = 0.01;
 
 const settings = {
 	display: {
@@ -76,7 +77,7 @@ module.exports = function ({
 	nodes[0].x = width / 2;
 	nodes[0].y = height / 2;
 	nodes[0].fixed = true;
-	nodes[0].drawName = true;
+	nodes[0].alwaysDrawName = true;
 
 	const svg = d3
 		.select(place)
@@ -98,7 +99,7 @@ module.exports = function ({
 	setTimeout(function () {
 		force
 			.gravity(settings.gravity.strength.value)
-			.start();
+			.start().alpha(energy);
 	}, 1500);
 
 	// These will get populated later
@@ -117,16 +118,36 @@ module.exports = function ({
 
 	let node = svg.selectAll('g.node');
 	let link = svg.selectAll('g.link');
+	let nodeGraphic;
 	let labelLink = svg.selectAll('g.anchorLink');
 	let labelNode = svg.selectAll('g.anchorNode');
 
+	node.call(force.drag);
+
 	function updateDisplay() {
-		nodes[0].drawName = true;
-		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
+		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
+		nodeGraphic.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3);
 		renderVisibleNames();
 	}
 
 	function renderData() {
+
+		nodes.forEach(n => {
+			if (!n.labelConfig) {
+				const source = {node: n, x: n.x || 0, y: n.y || 0};
+				const target = {node: n, x: n.x || 0, y: n.y || 0, hasLabel: true, label:n.label};
+
+				n.labelConfig = {
+					source,
+					target,
+					link: {
+						weight: 1,
+						node: n
+					}
+				};
+			}
+		});
 
 		link = link.data(force.links());
 		link.enter()
@@ -139,75 +160,54 @@ module.exports = function ({
 		link.exit().remove();
 
 		node = node.data(force.nodes());
-		node
+		nodeGraphic = node
 			.enter()
 			.append('svg:g')
-			.attr('class', 'node');
-
-		node
+			.attr('class', 'node')
 			.append('svg:circle')
-			.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
-			.style('fill', (x, i) => i === 0 ? '#F64' : '#555')
-			.style('stroke', '#FFF')
-			.style('stroke-width', 3)
+			.attr('r', x => Math.sqrt(x.numberOfOccurences)*2 + 2)
+			.style('fill', (n, i) => i === 0 ? '#F64' : '#555')
+			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
-			.on('mouseover', function (n) {
+			.on('mouseenter', function (n) {
 				n.drawName = true;
 				n.drawLink = true;
 				n.getConnections().forEach(p => p. drawName = true);
 				n.getConnections().forEach(p => p. drawLink = true);
 				updateDisplay();
 			})
-			.on('mouseout', function (n) {
-				if (!settings.display.showAllNames.value) {
-					n.drawName = false;
-					n.getConnections().forEach(p => p. drawName = false);
-				}
-				if (!settings.display.showAllLinks.value) {
-					n.drawLink = false;
-					n.getConnections().forEach(p => p. drawLink = false);
-				}
+			.on('mouseleave', function (n) {
+				n.drawName = false;
+				n.drawLink = false;
+				n.getConnections().forEach(p => p. drawName = false);
+				n.getConnections().forEach(p => p. drawLink = false);
 				updateDisplay();
 			});
 
-		node.call(force.drag);
-
 		node.exit().remove();
 
-		force.start();
-
 		buildUi();
+		renderVisibleNames();
 	}
 	renderData();
 
-	function renderVisibleNames(clear = false) {
+	function renderVisibleNames() {
+
+		// Empty
 		labelLinks.splice(0);
 		labelNodes.splice(0);
 
-		// Create nodes
-		if (!clear) {
-
-			// clear the links
-			renderVisibleNames(true);
-
-			nodes
-				.filter(n => n.drawName)
-				.forEach(node => {
-					labelNodes.push({node, x: node.x, y: node.y});
-					labelNodes.push({node, x: node.x, y: node.y, hasLabel: true});
-				});
-
-			labelNodes
-				.filter((n, i) => (i%2))
-				.forEach(function (n, i) {
-					labelLinks.push({
-						source: i * 2,
-						target: i * 2 + 1,
-						weight: 1
-					});
-				});
-
-		}
+		// Add new
+		nodes
+			.filter(n => n.drawName || n.alwaysDrawName || settings.display.showAllNames.value)
+			.forEach(n => {
+				if (labelNodes.indexOf(n.labelConfig.source) === -1) {
+					n.labelConfig.link.source = labelNodes.push(n.labelConfig.source)-1;
+					n.labelConfig.link.target = labelNodes.push(n.labelConfig.target)-1;
+					labelLinks.push(n.labelConfig.link);
+				}
+			});
 
 		labelLink = labelLink.data(force2.links());
 		labelLink
@@ -217,24 +217,26 @@ module.exports = function ({
 		labelLink.exit().remove();
 
 		labelNode = labelNode.data(force2.nodes());
-		labelNode
+		const labelNodeGraphic = labelNode
 			.enter()
 			.append('svg:g');
 
-		labelNode
+		// Needed circle
+		labelNodeGraphic
 			.append('svg:circle')
 			.attr('r', 10)
 			.style('display', 'none');
 
-		labelNode
+		// Label
+		labelNodeGraphic
 			.append('svg:text')
-			.text(d => d.hasLabel ? d.node.label : '')
+			.text(d => d.hasLabel ? d.label : '')
 			.attr('class', 'd3-label')
 			.style('fill', '#555');
 
 		labelNode.exit().remove();
 
-		force2.start();
+		force2.start().alpha(energy);
 	}
 
 	const updateLink = function() {
@@ -251,13 +253,14 @@ module.exports = function ({
 
 	const updateNode = function() {
 		this.attr('transform', function(d) {
-			return 'translate(' + d.x + ',' + d.y + ')';
+			return 'translate(' + (d.x || 0) + ',' + (d.y || 0) + ')';
 		});
 	};
 
 	force.on('tick', function() {
 
-		force2.start();
+		force.alpha(energy);
+		force2.alpha(energy);
 
 		node.call(updateNode);
 		link.call(updateLink);
@@ -282,7 +285,7 @@ module.exports = function ({
 				const dist = Math.sqrt(diffX * diffX + diffY * diffY);
 
 				let shiftX = b.width * (diffX - dist) / (dist * 2);
-				shiftX = Math.max(-b.width, Math.min(0, shiftX));
+				shiftX = Math.max(-b.width, Math.min(0, shiftX)) || 0;
 				const shiftY = 5;
 				this.childNodes[1].setAttribute('transform', 'translate(' + shiftX + ',' + shiftY + ')');
 			}
@@ -312,8 +315,7 @@ module.exports = function ({
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
-			)
-			.start();
+			).start().alpha(energy);
 	}
 
 	applySettings();
@@ -382,7 +384,7 @@ module.exports = function ({
 				<label for='people'>Select a starting person
 				<input list='people' name='people' id='people-list'>
 				<datalist id='people'>
-					${Object.keys(unifiedData).map(p => '<option value="' + unifiedData[p].name + '">').join('')}
+					${Object.keys(window.unifiedData).map(p => '<option value="' + window.unifiedData[p].name + '">').join('')}
 				</datalist></label>
 				<input type='submit' value='Submit'>
 			</form>` +
@@ -399,17 +401,23 @@ module.exports = function ({
 					nodes[0].x = undefined;
 					nodes[0].y = undefined;
 					nodes[0].fixed = undefined;
-					nodes[0].drawName = false;
+					nodes[0].alwaysDrawName = false;
 
 					links.splice(0);
-					links.push(...data.links);
 					nodes.splice(0);
+
+					// Rerender with new data
+					renderData();
+
+					links.push(...data.links);
 					nodes.push(...data.nodes);
 
 					nodes[0].x = width / 2;
 					nodes[0].y = height / 2;
 					nodes[0].fixed = true;
+					nodes[0].alwaysDrawName = true;
 
+					// // Rerender with new data
 					renderData();
 				});
 		}
@@ -428,8 +436,13 @@ module.exports = function ({
 
 					// Find the matching node and behave like it does on mouseover
 					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
+
+					// if the node has been removed then this will be undefined
+					if (!n) return;
+
 					n.drawName = true;
 					n.drawLink = true;
+					n.highlight = true;
 					n.getConnections().forEach(p => p. drawName = true);
 					n.getConnections().forEach(p => p. drawLink = true);
 					updateDisplay();
@@ -438,16 +451,16 @@ module.exports = function ({
 
 					// Find the matching node and behave like it does on mouseout
 					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-					if (!settings.display.showAllNames.value) {
-						n.drawName = false;
-						n.getConnections().forEach(p => p. drawName = false);
-					}
-					if (!settings.display.showAllLinks.value) {
-						n.drawLink = false;
-						n.getConnections().forEach(p => p. drawLink = false);
-					}
+
+					// if the node has been removed then this will be undefined
+					if (!n) return;
+					n.drawName = false;
+					n.drawLink = false;
+					n.highlight = false;
+					n.getConnections().forEach(p => p. drawName = false);
+					n.getConnections().forEach(p => p. drawLink = false);
 					updateDisplay();
 				});
 			});
-	};
+	}
 };

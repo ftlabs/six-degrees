@@ -109,35 +109,35 @@ function getConnectionsForAPerson(id) {
 	return Promise.resolve(unifiedData[id])
 		.then(personData => getOrCreatePerson(personData))
 		.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
-		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
+		.then(([people, rootPerson]) => [people.sizenodes < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
 		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
 		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
 		.then(([people, rootPerson]) => [Array.from(people), rootPerson])
-		.then(([connectedPeeps, rootPerson]) => {
+		.then(([nodes, rootPerson]) => {
 
 			const links = [];
 
-			if (connectedPeeps.length === 1) {
+			if (nodes.length === 1) {
 				throw Error(`Not enough people connected`);
 			}
 
-			const nPeople = connectedPeeps.length;
+			const nPeople = nodes.length;
 
 			// Link up nodes
 			for(let i = 0; i < nPeople; i++) {
 				for(var j = 0; j < i; j++) {
-					if(connectedPeeps[j].isConnectedTo(connectedPeeps[i])) {
+					if(nodes[j].isConnectedTo(nodes[i])) {
 						links.push({
 							source: i,
 							target: j,
-							weight: connectedPeeps[j].connectionWeights.get(connectedPeeps[i]) / connectedPeeps[j].island.maxConnections
+							weight: nodes[j].connectionWeights.get(nodes[i]) / nodes[j].island.maxConnections
 						});
 					}
 				}
 			}
 
 			return {
-				nodes: connectedPeeps,
+				nodes: nodes,
 				links
 			};
 
