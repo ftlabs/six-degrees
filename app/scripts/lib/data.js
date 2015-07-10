@@ -109,7 +109,7 @@ function getConnectionsForAPerson(id) {
 	return Promise.resolve(unifiedData[id])
 		.then(personData => getOrCreatePerson(personData))
 		.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
-		.then(([people, rootPerson]) => [people.sizenodes < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
+		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
 		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
 		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
 		.then(([people, rootPerson]) => [Array.from(people), rootPerson])
