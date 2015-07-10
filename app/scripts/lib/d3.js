@@ -16,6 +16,10 @@ const settings = {
 		showAllLinks: {
 			value: 0,
 			range: [0, 1]
+		},
+		"zoom (log scale)": {
+			value: 0,
+			range: [-3, 3, 0.1]
 		}
 	},
 	charge: {
@@ -74,6 +78,9 @@ module.exports = function ({
 	place = 'body'
 } = {}) {
 
+	width *= 10;
+	height *= 10;
+
 	nodes[0].x = width / 2;
 	nodes[0].y = height / 2;
 	nodes[0].fixed = true;
@@ -91,6 +98,7 @@ module.exports = function ({
 		.size([width, height])
 		.nodes(nodes)
 		.links(links);
+
 
 	// Start with some initial inwards motion
 	force.gravity(1);
@@ -111,9 +119,9 @@ module.exports = function ({
 		.nodes(labelNodes)
 		.links(labelLinks)
 		.gravity(0)
-		.linkDistance(0)
-		.linkStrength(8)
-		.charge(-100)
+		.linkDistance(3)
+		.linkStrength(1)
+		.charge(-800)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
@@ -124,7 +132,12 @@ module.exports = function ({
 
 	node.call(force.drag);
 
+	function setZoom(zoom = 1) {
+		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
+	}
+
 	function updateDisplay() {
+		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
 		nodeGraphic.style('stroke', n => n.highlight ? '#F64' : '#FFF')
 			.style('stroke-width',n => n.highlight ? 5 : 3);
@@ -189,6 +202,7 @@ module.exports = function ({
 
 		buildUi();
 		renderVisibleNames();
+		force.start().alpha(energy);
 	}
 	renderData();
 
@@ -212,7 +226,9 @@ module.exports = function ({
 		labelLink = labelLink.data(force2.links());
 		labelLink
 			.enter()
-			.append('svg:line');
+			.append('svg:line')
+			.style('stroke', '#000')
+			.style('opacity', 0.2);
 
 		labelLink.exit().remove();
 
@@ -236,7 +252,14 @@ module.exports = function ({
 
 		labelNode.exit().remove();
 
-		force2.start().alpha(energy);
+		force2.start().alpha(0);
+
+		labelNode.each(function(d) {
+
+			// Place each node on where it is attatched to
+			d.x = d.node.x;
+			d.y = d.node.y - 5;
+		});
 	}
 
 	const updateLink = function() {
@@ -257,6 +280,7 @@ module.exports = function ({
 		});
 	};
 
+
 	force.on('tick', function() {
 
 		force.alpha(energy);
@@ -271,23 +295,11 @@ module.exports = function ({
 		labelNode.each(function(d, i) {
 			if(i % 2 === 0) {
 
-				// Attatch one end of the Label Link to the node
+				// Attach one end of the Label Link to the node
+				// let the other bounce free avoiding so they can avoid each other
 				d.x = d.node.x;
 				d.y = d.node.y;
 				d.fixed = true;
-			} else {
-
-				const b = this.childNodes[1].getBBox();
-
-				const diffX = d.x - d.node.x;
-				const diffY = d.y - d.node.y;
-
-				const dist = Math.sqrt(diffX * diffX + diffY * diffY);
-
-				let shiftX = b.width * (diffX - dist) / (dist * 2);
-				shiftX = Math.max(-b.width, Math.min(0, shiftX)) || 0;
-				const shiftY = 5;
-				this.childNodes[1].setAttribute('transform', 'translate(' + shiftX + ',' + shiftY + ')');
 			}
 		});
 
@@ -411,6 +423,8 @@ module.exports = function ({
 
 					links.push(...data.links);
 					nodes.push(...data.nodes);
+
+					console.log(links);
 
 					nodes[0].x = width / 2;
 					nodes[0].y = height / 2;
