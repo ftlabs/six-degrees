@@ -16,6 +16,11 @@ body, html {
 	left: 50%;
 	transform: translateX(-50%);
 	margin-bottom: 4em;
+	z-index: 10;
+}
+
+.d3-svg {
+	position: fixed;
 }
 
 .o-header__primary__right {
@@ -30,7 +35,7 @@ body, html {
 	display: block;
 }
 
-.anchorNode {
+.d3-label {
 	fill: none;
 	fill-opacity: 1;
 	stroke: #FFF;
@@ -94,5 +99,51 @@ body, html {
 				margin: 0
 			}
 		}
+	}
+}
+
+.settings-wrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	max-width: 18em;
+	z-index: 5;
+
+	.collapse-trigger {
+		cursor: pointer;
+	}
+
+	.collapsed .collapsable {
+		display: none;
+	}
+
+	.sappy-settings_slider-title,
+	.sappy-settings_slider {
+		display: block;
+		text-transform: capitalize;
+	}
+
+	.sappy-settings_slider {
+		padding: 0.2em;
+		border: 1px solid #AAA;
+		background-color: #CCC;
+		border-width: 1px 0 1px 0;
+		margin: 0.2em;
+	}
+
+	.sappy-settings_slider-title {
+		margin-top: 1em;
+	}
+
+	.sappy-settings_person-selector {
+		cursor: pointer;
+
+		&:hover {
+			background-color: rgba(0,0,0,0.2);
+		}
+	}
+
+	.o-techdocs-card__subtitle {
+		white-space: normal;
 	}
 }
