@@ -123,8 +123,8 @@ module.exports = function ({
 		.nodes(labelNodes)
 		.links(labelLinks)
 		.gravity(0)
-		.linkDistance(0)
-		.linkStrength(3)
+		.linkDistance(0.5)
+		.linkStrength(8)
 		.charge(d => d.hasLabel ? -1000 : -10)
 		.size([width, height]);
 
@@ -152,8 +152,8 @@ module.exports = function ({
 
 		nodes.forEach(n => {
 			if (!n.labelConfig) {
-				const source = {node: n, x: width / 2 , y: height / 2 };
-				const target = {node: n, x: width / 2 , y: height / 2, hasLabel: true, label: n.label};
+				const source = {node: n};
+				const target = {node: n, hasLabel: true, label: n.label};
 
 				n.labelConfig = {
 					source,
@@ -257,13 +257,6 @@ module.exports = function ({
 		labelNode.exit().remove();
 
 		force2.start().alpha(energy);
-
-		labelNode.each(function(d) {
-
-			// Place each node on where it is attatched to
-			d.x = d.node.x;
-			d.y = d.node.y - 5;
-		});
 	}
 
 	const updateLink = function() {
@@ -308,6 +301,9 @@ module.exports = function ({
 				d.x = d.node.x;
 				d.y = d.node.y;
 				d.fixed = true;
+			} else {
+				if (Math.abs(d.x - d.node.x) >= 500) d.x = d.node.x;
+				if (Math.abs(d.y - d.node.y) >= 500) d.y = d.node.y;
 			}
 		});
 
