@@ -76,6 +76,7 @@ module.exports = function ({
 	nodes[0].x = width / 2;
 	nodes[0].y = height / 2;
 	nodes[0].fixed = true;
+	nodes[0].drawName = true;
 
 	const svg = d3
 		.select(place)
@@ -100,19 +101,32 @@ module.exports = function ({
 			.start();
 	}, 1500);
 
+	// These will get populated later
+	const labelLinks = [];
+	const labelNodes = [];
+
+	const force2 = d3.layout
+		.force()
+		.nodes(labelNodes)
+		.links(labelLinks)
+		.gravity(0)
+		.linkDistance(0)
+		.linkStrength(8)
+		.charge(-100)
+		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
 	let link = svg.selectAll('g.link');
-	let nodeText;
+	let labelLink = svg.selectAll('g.anchorLink');
+	let labelNode = svg.selectAll('g.anchorNode');
 
 	function updateDisplay() {
+		nodes[0].drawName = true;
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
-		nodeText.style('display', nt => nt.drawName ? 'inline' : 'none');
+		renderVisibleNames();
 	}
 
 	function renderData() {
-
-		if (nodeText) nodeText.remove();
 
 		link = link.data(force.links());
 		link.enter()
@@ -156,12 +170,6 @@ module.exports = function ({
 				updateDisplay();
 			});
 
-		nodeText = node
-			.append('svg:text')
-			.text(d => d.label)
-			.style('fill', '#555')
-			.style('display', 'none');
-
 		node.call(force.drag);
 
 		node.exit().remove();
@@ -171,6 +179,62 @@ module.exports = function ({
 		buildUi();
 	}
 	renderData();
+
+	function renderVisibleNames(clear = false) {
+		labelLinks.splice(0);
+		labelNodes.splice(0);
+
+		// Create nodes
+		if (!clear) {
+
+			// clear the links
+			renderVisibleNames(true);
+
+			nodes
+				.filter(n => n.drawName)
+				.forEach(node => {
+					labelNodes.push({node, x: node.x, y: node.y});
+					labelNodes.push({node, x: node.x, y: node.y, hasLabel: true});
+				});
+
+			labelNodes
+				.filter((n, i) => (i%2))
+				.forEach(function (n, i) {
+					labelLinks.push({
+						source: i * 2,
+						target: i * 2 + 1,
+						weight: 1
+					});
+				});
+
+		}
+
+		labelLink = labelLink.data(force2.links());
+		labelLink
+			.enter()
+			.append('svg:line');
+
+		labelLink.exit().remove();
+
+		labelNode = labelNode.data(force2.nodes());
+		labelNode
+			.enter()
+			.append('svg:g');
+
+		labelNode
+			.append('svg:circle')
+			.attr('r', 10)
+			.style('display', 'none');
+
+		labelNode
+			.append('svg:text')
+			.text(d => d.hasLabel ? d.node.label : '')
+			.style('fill', '#555');
+
+		labelNode.exit().remove();
+
+		force2.start();
+	}
 
 	const updateLink = function() {
 		this.attr('x1', function(d) {
@@ -191,8 +255,40 @@ module.exports = function ({
 	};
 
 	force.on('tick', function() {
+
+		force2.start();
+
 		node.call(updateNode);
 		link.call(updateLink);
+	});
+
+	force2.on('tick', function() {
+
+		labelNode.each(function(d, i) {
+			if(i % 2 === 0) {
+
+				// Attatch one end of the Label Link to the node
+				d.x = d.node.x;
+				d.y = d.node.y;
+				d.fixed = true;
+			} else {
+
+				const b = this.childNodes[1].getBBox();
+
+				const diffX = d.x - d.node.x;
+				const diffY = d.y - d.node.y;
+
+				const dist = Math.sqrt(diffX * diffX + diffY * diffY);
+
+				let shiftX = b.width * (diffX - dist) / (dist * 2);
+				shiftX = Math.max(-b.width, Math.min(0, shiftX));
+				const shiftY = 5;
+				this.childNodes[1].setAttribute('transform', 'translate(' + shiftX + ',' + shiftY + ')');
+			}
+		});
+
+		labelLink.call(updateLink);
+		labelNode.call(updateNode);
 	});
 
 	function applySettings(displayOnly) {
@@ -302,6 +398,7 @@ module.exports = function ({
 					nodes[0].x = undefined;
 					nodes[0].y = undefined;
 					nodes[0].fixed = undefined;
+					nodes[0].drawName = false;
 
 					links.splice(0);
 					links.push(...data.links);
