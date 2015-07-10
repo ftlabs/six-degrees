@@ -125,7 +125,7 @@ module.exports = function ({
 		.gravity(0)
 		.linkDistance(0)
 		.linkStrength(3)
-		.charge(d => d.hasLabel ? -1000 : 0)
+		.charge(d => d.hasLabel ? -1000 : -10)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
