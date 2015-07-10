@@ -280,32 +280,51 @@ module.exports = function ({
 				}, false);
 			});
 
-		document.querySelector('.sappy-settings_people-list-target').innerHTML = nodes
-			.map(p => `<div data-id="${p.id}" class="sappy-settings_person-selector">${p.name}</div>`)
-			.join('\n');
+		document.querySelector('.sappy-settings_people-list-target').innerHTML = `
+			<form>
+				<label for='people'>Select a starting person
+				<input list='people' name='people' id='people-list'>
+				<datalist id='people'>
+					${Object.keys(unifiedData).map(p => '<option value="' + unifiedData[p].name + '">').join('')}
+				</datalist></label>
+				<input type='submit' value='Submit'>
+			</form>` +
+			nodes
+				.map(p => `<div data-id="${p.id}" class="sappy-settings_person-selector">${p.name}</div>`)
+				.join('\n');
+
+		function fetchDataForANewPersonById(id) {
+			if (!id) return Promise.reject('no id');
+			return window.getConnectionsForAPerson(id)
+				.then(data => {
+
+					// Reset the rootnode
+					nodes[0].x = undefined;
+					nodes[0].y = undefined;
+					nodes[0].fixed = undefined;
+
+					links.splice(0);
+					links.push(...data.links);
+					nodes.splice(0);
+					nodes.push(...data.nodes);
+
+					nodes[0].x = width / 2;
+					nodes[0].y = height / 2;
+					nodes[0].fixed = true;
+
+					renderData();
+				});
+		}
+
+		document.querySelector('.sappy-settings_people-list-target form').addEventListener('click', function (e) {
+			e.preventDefault();
+			fetchDataForANewPersonById(`people:${e.currentTarget.elements[0].value}`);
+		});
 
 		[...document.querySelectorAll('.sappy-settings_person-selector')]
 			.forEach(function (el) {
 				el.addEventListener('click', e => {
-					const person = e.currentTarget.dataset.id;
-					window.getConnectionsForAPerson(person).then(data => {
-
-						// Reset the rootnode
-						nodes[0].x = undefined;
-						nodes[0].y = undefined;
-						nodes[0].fixed = undefined;
-
-						links.splice(0);
-						links.push(...data.links);
-						nodes.splice(0);
-						nodes.push(...data.nodes);
-
-						nodes[0].x = width / 2;
-						nodes[0].y = height / 2;
-						nodes[0].fixed = true;
-
-						renderData();
-					});
+					fetchDataForANewPersonById(e.currentTarget.dataset.id);
 				});
 				el.addEventListener('mouseenter', e => {
 

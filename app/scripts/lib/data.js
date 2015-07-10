@@ -11,6 +11,7 @@ const pako = require('pako');
 const ui = require('./ui');
 
 const unifiedData = {};
+window.unifiedData = unifiedData;
 const populus = [];
 
 const MIN_NUMBER_OF_NODES = 50;
@@ -199,9 +200,9 @@ module.exports = fetchJSON(
 			</form>`);
 
 		return new Promise(function (resolve) {
-			modal.el.querySelector('form').addEventListener('submit', function (e) {
+			modal.el.querySelector('form').addEventListener('submit', function selectFromModal(e) {
 				e.preventDefault();
-				if (e.target.elements[0].value) {
+				if (e.currentTarget.elements[0].value) {
 					modal.remove();
 					resolve(`people:${e.target.elements[0].value}`);
 				}
