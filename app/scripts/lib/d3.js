@@ -101,7 +101,8 @@ module.exports = function ({
 		.force()
 		.size([width, height])
 		.nodes(nodes)
-		.links(links);
+		.links(links)
+		.chargeDistance(500);
 
 
 	// Start with some initial inwards motion
@@ -125,7 +126,9 @@ module.exports = function ({
 		.gravity(0)
 		.linkDistance(0.5)
 		.linkStrength(8)
-		.charge(d => d.hasLabel ? -1000 : -10)
+		.chargeDistance(500)
+		.charge(d => d.hasLabel ? -2000 : -10)
+		.friction(0.4)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
@@ -301,9 +304,6 @@ module.exports = function ({
 				d.x = d.node.x;
 				d.y = d.node.y;
 				d.fixed = true;
-			} else {
-				if (Math.abs(d.x - d.node.x) >= 500) d.x = d.node.x;
-				if (Math.abs(d.y - d.node.y) >= 500) d.y = d.node.y;
 			}
 		});
 
