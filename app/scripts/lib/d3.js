@@ -82,13 +82,24 @@ module.exports = function ({
 	place = 'body'
 } = {}) {
 
+
+	/**
+	 * Make the svg 10 times larger
+	 */
+
 	width *= 10;
 	height *= 10;
 
+	/**
+	 * Make the first node (the root node) centered
+	 */
+
 	nodes[0].x = width / 2;
 	nodes[0].y = height / 2;
-	nodes[0].fixed = true;
-	nodes[0].alwaysDrawName = true;
+
+	/**
+	 * Variables
+	 */
 
 	const svg = d3
 		.select(place)
@@ -100,9 +111,10 @@ module.exports = function ({
 	const force = d3.layout
 		.force()
 		.size([width, height])
-		.nodes(nodes)
-		.links(links)
-		.chargeDistance(500);
+		.nodes([])
+		.links([])
+		.chargeDistance(500)
+		.friction(0.5);
 
 
 	// Start with some initial inwards motion
@@ -110,25 +122,23 @@ module.exports = function ({
 
 	// Restore gravity
 	setTimeout(function () {
+		nodes[0].alwaysDrawName = true;
 		force
 			.gravity(settings.gravity.strength.value)
 			.start().alpha(energy);
+		updateDisplay();
 	}, 1500);
-
-	// These will get populated later
-	const labelLinks = [];
-	const labelNodes = [];
 
 	const force2 = d3.layout
 		.force()
-		.nodes(labelNodes)
-		.links(labelLinks)
+		.nodes([])
+		.links([])
 		.gravity(0)
 		.linkDistance(0.5)
-		.linkStrength(8)
+		.linkStrength(10)
 		.chargeDistance(500)
-		.charge(d => d.hasLabel ? -2000 : -10)
-		.friction(0.4)
+		.charge(d => d.hasLabel ? -5000 : -100)
+		.friction(0.3)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
@@ -137,7 +147,9 @@ module.exports = function ({
 	let labelLink = svg.selectAll('g.anchorLink');
 	let labelNode = svg.selectAll('g.anchorNode');
 
-	node.call(force.drag);
+	/**
+	 * Functions
+	 */
 
 	function setZoom(zoom = 1) {
 		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
@@ -152,6 +164,17 @@ module.exports = function ({
 	}
 
 	function renderData() {
+
+		const forceLinks = force.links();
+		const forceNodes = force.nodes();
+
+		// Empty
+		forceLinks.splice(0);
+		forceNodes.splice(0);
+
+		// Add the nodes
+		forceLinks.push(...links);
+		forceNodes.push(...nodes);
 
 		nodes.forEach(n => {
 			if (!n.labelConfig) {
@@ -205,15 +228,18 @@ module.exports = function ({
 				updateDisplay();
 			});
 
+		node.call(force.drag);
+
 		node.exit().remove();
 
 		buildUi();
-		renderVisibleNames();
 		force.start().alpha(energy);
 	}
-	renderData();
 
 	function renderVisibleNames() {
+
+		const labelLinks = force2.links();
+		const labelNodes = force2.nodes();
 
 		// Empty
 		labelLinks.splice(0);
@@ -223,11 +249,11 @@ module.exports = function ({
 		nodes
 			.filter(n => n.drawName || n.alwaysDrawName || settings.display.showAllNames.value)
 			.forEach(n => {
-				if (labelNodes.indexOf(n.labelConfig.source) === -1) {
-					n.labelConfig.link.source = labelNodes.push(n.labelConfig.source)-1;
-					n.labelConfig.link.target = labelNodes.push(n.labelConfig.target)-1;
-					labelLinks.push(n.labelConfig.link);
-				}
+				n.labelConfig.target.x = n.x - 20;
+				n.labelConfig.target.y = n.y - 20;
+				n.labelConfig.link.source = labelNodes.push(n.labelConfig.source)-1;
+				n.labelConfig.link.target = labelNodes.push(n.labelConfig.target)-1;
+				labelLinks.push(n.labelConfig.link);
 			});
 
 		labelLink = labelLink.data(force2.links());
@@ -255,7 +281,7 @@ module.exports = function ({
 			.append('svg:text')
 			.text(d => d.hasLabel ? d.label : '')
 			.attr('class', 'd3-label')
-			.style('fill', '#555');
+			.style('fill', '#55A');
 
 		labelNode.exit().remove();
 
@@ -280,44 +306,9 @@ module.exports = function ({
 		});
 	};
 
+	function applySettings() {
 
-	force.on('tick', function() {
-
-		if (settings.display["Don't let rest"].value) {
-
-			// keep the simulation always running.
-			force.alpha(energy);
-		}
-
-		node.call(updateNode);
-		link.call(updateLink);
-	});
-
-	force2.on('tick', function() {
-		force2.alpha(energy);
-
-		labelNode.each(function(d, i) {
-			if(i % 2 === 0) {
-
-				// Attach one end of the Label Link to the node
-				// let the other bounce free avoiding so they can avoid each other
-				d.x = d.node.x;
-				d.y = d.node.y;
-				d.fixed = true;
-			}
-		});
-
-		labelLink.call(updateLink);
-		labelNode.call(updateNode);
-	});
-
-	function applySettings(displayOnly) {
-
-		nodes.forEach(p => p.drawName = !!settings.display.showAllNames.value);
-		nodes.forEach(p => p.drawLink = !!settings.display.showAllLinks.value);
 		updateDisplay();
-
-		if (displayOnly) return;
 
 		force
 			.gravity(settings.gravity.strength.value)
@@ -333,8 +324,6 @@ module.exports = function ({
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
 			).start().alpha(energy);
 	}
-
-	applySettings();
 
 	function buildUi() {
 		document.querySelector('.sappy-settings .o-techdocs-card__context')
@@ -382,7 +371,7 @@ module.exports = function ({
 					const inputSlider = e.currentTarget;
 					settings[inputSlider.dataset.actionname][inputSlider.dataset.tweakname].value = inputSlider.value;
 					inputSlider.nextSibling.innerHTML = inputSlider.value;
-					applySettings(inputSlider.dataset.actionname === 'display');
+					applySettings();
 				}, false);
 			});
 
@@ -391,7 +380,7 @@ module.exports = function ({
 				el.addEventListener('change', e => {
 					const checkbox = e.currentTarget;
 					settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value = checkbox.checked ? 1 : 0;
-					applySettings(checkbox.dataset.actionname === 'display');
+					applySettings();
 				}, false);
 			});
 
@@ -427,8 +416,6 @@ module.exports = function ({
 
 					links.push(...data.links);
 					nodes.push(...data.nodes);
-
-					console.log(links);
 
 					nodes[0].x = width / 2;
 					nodes[0].y = height / 2;
@@ -481,4 +468,49 @@ module.exports = function ({
 				});
 			});
 	}
+
+	// Once it has run out of energy start it again
+	// so that it stops spinning
+	force.on('end', function () {
+		force.on('tick', function() {
+			if (settings.display["Don't let rest"].value) {
+
+				// keep the simulation always running.
+				force.alpha(energy);
+			}
+			force2.alpha(energy);
+
+			node.call(updateNode);
+			link.call(updateLink);
+		});
+		force.start().alpha(energy);
+	});
+
+	force.on('tick', function() {
+		force2.alpha(5);
+
+		node.call(updateNode);
+		link.call(updateLink);
+	});
+
+	force2.on('tick', function() {
+		force2.alpha(energy);
+
+		labelNode.each(function(d, i) {
+			if(i % 2 === 0) {
+
+				// Attach one end of the Label Link to the node
+				// let the other bounce free avoiding so they can avoid each other
+				d.x = d.node.x;
+				d.y = d.node.y;
+				d.fixed = true;
+			}
+		});
+
+		labelLink.call(updateLink);
+		labelNode.call(updateNode);
+	});
+
+	renderData();
+	applySettings();
 };
