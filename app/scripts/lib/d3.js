@@ -4,7 +4,7 @@
  */
 
 'use strict';
-const energy = 0.01;
+const energy = 0.1;
 
 const settings = {
 	display: {
@@ -14,7 +14,7 @@ const settings = {
 			range: [0, 1]
 		},
 		showAllLinks: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		"zoom (log scale)": {
@@ -22,12 +22,16 @@ const settings = {
 			range: [-3, 3, 0.1]
 		},
 		"Don't let rest": {
-			value: 1,
+			value: 0,
 			range: [0, 1]
 		}
 	},
 	charge: {
 		description: 'Repulsive force between each node',
+		proportionalToNumberOfOccurences: {
+			value: 1,
+			range: [0, 1]
+		},
 		proportionalToNumberOfNodes: {
 			value: 0,
 			range: [0, 1]
@@ -39,6 +43,10 @@ const settings = {
 	},
 	linkDistance: {
 		description: 'Optimal distance between connected nodes',
+		proportionalToNumberOfOccurences: {
+			value: 1,
+			range: [0, 1]
+		},
 		proportionalToNumberOfNodes: {
 			value: 0,
 			range: [0, 1]
@@ -55,8 +63,8 @@ const settings = {
 	linkStrength: {
 		description: 'Force applied to maintain that distance',
 		coefficient: {
-			value: 10,
-			range: [10, 300, 10]
+			value: 5,
+			range: [0, 50, 1]
 		},
 		affectedByCoocurence: {
 			value: 0,
@@ -70,12 +78,17 @@ const settings = {
 			range: [0, 10, 0.5]
 		}
 	},
+	friction: {
+		description: 'dampening force on the velocity',
+		strength: {
+			value: 0.5,
+			range: [0, 1, 0.05]
+		}
+	},
 };
 
 module.exports = function ({
-	people,
-	nodes,
-	links
+	nodes
 }, {
 	width = 960,
 	height = 500,
@@ -89,13 +102,6 @@ module.exports = function ({
 
 	width *= 10;
 	height *= 10;
-
-	/**
-	 * Make the first node (the root node) centered
-	 */
-
-	nodes[0].x = width / 2;
-	nodes[0].y = height / 2;
 
 	/**
 	 * Variables
@@ -116,18 +122,12 @@ module.exports = function ({
 		.chargeDistance(500)
 		.friction(0.5);
 
+	const drag = force.drag();
 
-	// Start with some initial inwards motion
-	force.gravity(1);
 
-	// Restore gravity
-	setTimeout(function () {
-		nodes[0].alwaysDrawName = true;
-		force
-			.gravity(settings.gravity.strength.value)
-			.start().alpha(energy);
-		updateDisplay();
-	}, 1500);
+	// Change the default energy value resume restores to.
+	force.oldResume = force.resume;
+	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(energy); };
 
 	const force2 = d3.layout
 		.force()
@@ -137,7 +137,7 @@ module.exports = function ({
 		.linkDistance(0.5)
 		.linkStrength(10)
 		.chargeDistance(500)
-		.charge(d => d.hasLabel ? -5000 : -100)
+		.charge(d => d.hasLabel ? -2000 : -100)
 		.friction(0.3)
 		.size([width, height]);
 
@@ -163,7 +163,10 @@ module.exports = function ({
 		renderVisibleNames();
 	}
 
-	function renderData() {
+	let newItemInterval;
+	function updateData() {
+
+		buildUi();
 
 		const forceLinks = force.links();
 		const forceNodes = force.nodes();
@@ -172,10 +175,7 @@ module.exports = function ({
 		forceLinks.splice(0);
 		forceNodes.splice(0);
 
-		// Add the nodes
-		forceLinks.push(...links);
-		forceNodes.push(...nodes);
-
+		// create nodes for each of the labels
 		nodes.forEach(n => {
 			if (!n.labelConfig) {
 				const source = {node: n};
@@ -192,14 +192,74 @@ module.exports = function ({
 			}
 		});
 
+		// make the root node special
+		nodes[0].x = width / 2;
+		nodes[0].y = height / 2;
+		// nodes[0].fixed = true;
+		nodes[0].alwaysDrawName = true;
+
+		// Render the empty set of nodes.
+		renderPoints();
+
+		let nodeBuffer = new Set();
+
+		let i = (function *nextNodeToRender() {
+
+			let firstNode = nodes[0];
+			yield firstNode;
+			while(nodeBuffer.size) {
+				let n = nodeBuffer.values().next().value;
+				nodeBuffer.delete(n);
+				yield n;
+			}
+		})();
+
+		// Stop any current display from having
+		// nodes appended to it.
+		clearInterval(newItemInterval);
+		newItemInterval = setInterval(function () {
+
+			// Add the nodes
+			const {value, done} = i.next();
+			if (done) return clearInterval(newItemInterval);
+
+			forceNodes.push(value);
+
+			console.log(value);
+
+			value.getConnections(1).forEach(n => {
+				if (forceNodes.indexOf(n) === -1) {
+
+					// make sure it is in the chosen from the data
+					if (nodes.indexOf(n) !== -1) {
+						nodeBuffer.add(n);
+					}
+				} else {
+
+					// Already on the diagram link them up
+					forceLinks.push({
+						target: forceNodes.indexOf(value),
+						source: forceNodes.indexOf(n),
+						weight: n.normalizedConnectionWeights
+					});
+				}
+			});
+			renderPoints();
+		}, 500);
+	}
+
+	function renderPoints() {
+
 		link = link.data(force.links());
 		link.enter()
 			.append('svg:line')
 			.attr('class', 'link')
 			.style('stroke', '#000')
 			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
+			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('display', 'none')
-			.style('zIndex', -1);
+			.style('pointer-events', 'none')
+			.style('zIndex', -2);
 		link.exit().remove();
 
 		node = node.data(force.nodes());
@@ -228,11 +288,11 @@ module.exports = function ({
 				updateDisplay();
 			});
 
-		node.call(force.drag);
+		node.call(drag);
 
 		node.exit().remove();
 
-		buildUi();
+		updateDisplay();
 		force.start().alpha(energy);
 	}
 
@@ -260,8 +320,7 @@ module.exports = function ({
 		labelLink
 			.enter()
 			.append('svg:line')
-			.style('stroke', '#00C')
-			.style('opacity', 0.2);
+			.style('display', 'none');
 
 		labelLink.exit().remove();
 
@@ -285,7 +344,7 @@ module.exports = function ({
 
 		labelNode.exit().remove();
 
-		force2.start().alpha(energy);
+		force2.start();
 	}
 
 	const updateLink = function() {
@@ -312,25 +371,29 @@ module.exports = function ({
 
 		force
 			.gravity(settings.gravity.strength.value)
+			.friction(settings.friction.strength.value)
 			.linkDistance(l => settings.linkDistance.coefficient.value *
 				Math.pow(l.weight, -settings.linkDistance.affectedByCoocurence.value) *
-				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value)
+				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value) *
+				Math.pow(l.target.numberOfOccurences + l.source.numberOfOccurences, settings.linkDistance.proportionalToNumberOfOccurences.value * 0.5)
 			)
-			.charge(-1 *
+			.charge(n => -1 *
 				settings.charge.coefficient.value /
-				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value)
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value) *
+				Math.pow(n.numberOfOccurences, settings.charge.proportionalToNumberOfOccurences.value * 0.5)
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
 			).start().alpha(energy);
 	}
 
-	function buildUi() {
-		document.querySelector('.sappy-settings .o-techdocs-card__context')
-			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+	document.querySelector('.sappy-settings .o-techdocs-card__context')
+		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
-		document.querySelector('.sappy-people .o-techdocs-card__context')
-			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+	document.querySelector('.sappy-people .o-techdocs-card__context')
+		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+
+	function buildUi() {
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
 
@@ -408,22 +471,11 @@ module.exports = function ({
 					nodes[0].fixed = undefined;
 					nodes[0].alwaysDrawName = false;
 
-					links.splice(0);
 					nodes.splice(0);
-
-					// Rerender with new data
-					renderData();
-
-					links.push(...data.links);
 					nodes.push(...data.nodes);
 
-					nodes[0].x = width / 2;
-					nodes[0].y = height / 2;
-					nodes[0].fixed = true;
-					nodes[0].alwaysDrawName = true;
-
 					// // Rerender with new data
-					renderData();
+					updateData();
 				});
 		}
 
@@ -469,26 +521,7 @@ module.exports = function ({
 			});
 	}
 
-	// Once it has run out of energy start it again
-	// so that it stops spinning
-	force.on('end', function () {
-		force.on('tick', function() {
-			if (settings.display["Don't let rest"].value) {
-
-				// keep the simulation always running.
-				force.alpha(energy);
-			}
-			force2.alpha(energy);
-
-			node.call(updateNode);
-			link.call(updateLink);
-		});
-		force.start().alpha(energy);
-	});
-
 	force.on('tick', function() {
-		force2.alpha(5);
-
 		node.call(updateNode);
 		link.call(updateLink);
 	});
@@ -511,6 +544,6 @@ module.exports = function ({
 		labelNode.call(updateNode);
 	});
 
-	renderData();
+	updateData();
 	applySettings();
 };
