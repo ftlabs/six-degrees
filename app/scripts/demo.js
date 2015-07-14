@@ -7,6 +7,6 @@ require('./lib/data.js')
 		require('./lib/d3.js')(data, {
 			place: '.o-techdocs-content',
 			width: document.querySelector('.o-techdocs-content').clientWidth,
-			height: document.querySelector('body').clientHeight - document.querySelector('.o-header').clientHeight
+			height: document.querySelector('body').clientHeight
 		});
 	});

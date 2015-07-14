@@ -108,34 +108,12 @@ function fetchJSON(...urls) {
 	});
 }
 
-function getConnectionsForAPerson(id) {
-	return Promise.resolve(unifiedData[id])
-		.then(personData => {
-			if (personData) {
-				return personData;
-			}
-			throw Error('Person is not mentioned in time period.');
-		})
-		.then(personData => getOrCreatePerson(personData))
-		.then(rootPerson => rootPerson.getConnections(4))
-		.then(people => {
+function getConnectionsForPeople(peopleArray) {
 
-			let root = people.values().next().value;
-
-			// Limit the number of people to the
-			// top by most occurences
-			// remove the root person since they need to be first
-			const selected = Array.from(people)
-				.sort((p1, p2) => p2.numberOfOccurences - p1.numberOfOccurences)
-				.filter(p => p !== root)
-				.slice(0, MAX_NUMBER_OF_NODES - 1);
-
-			// re-add the root person
-			selected.unshift(root);
-
-			return selected;
-		})
-		.then(nodes => ({nodes}));
+	// Each person should populate their connections
+	peopleArray = peopleArray.map(person => getOrCreatePerson(person));
+	peopleArray.forEach(person => person.getConnections(1));
+	return {nodes: peopleArray};
 }
 
 function updateData({daysAgo, days}) {
@@ -184,35 +162,9 @@ function updateData({daysAgo, days}) {
 				});
 			});
 
-			return [unifiedData, preSelectedPerson];
+			return islandsJSON.islands[0].islanders.slice(0, 10);
 		})
-		.then(function ([people, preSelectedPerson]) {
-
-			if (personSearch) {
-				return 'people:' + preSelectedPerson;
-			}
-
-			const modal = ui.modal('.o-techdocs-main', `
-				<form>
-					<label for='people'>Select a starting person
-					<input list='people' name='people' id='people-list'>
-					<datalist id='people'>
-						${Object.keys(people).map(p => '<option value="' + people[p].name + '">').join('')}
-					</datalist></label>
-					<input type='submit' value='Submit'>
-				</form>`);
-
-			return new Promise(function (resolve) {
-				modal.el.querySelector('form').addEventListener('submit', function selectFromModal(e) {
-					e.preventDefault();
-					if (e.currentTarget.elements[0].value) {
-						modal.remove();
-						resolve(`people:${e.target.elements[0].value}`);
-					}
-				});
-			});
-		})
-		.then(getConnectionsForAPerson)
+		.then(getConnectionsForPeople)
 		.catch(function (e) {
 			ui.modal('.o-techdocs-main', `Error: ${e.message}`);
 			throw e;
@@ -224,5 +176,4 @@ module.exports = updateData({
 	days: weeksBack * 7
 });
 
-window.getConnectionsForAPerson = getConnectionsForAPerson;
 window.updateData = updateData;
