@@ -4,21 +4,34 @@
  */
 
 'use strict';
+const energy = 0.1;
 
 const settings = {
 	display: {
 		description: 'Display Settings',
 		showAllNames: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		showAllLinks: {
+			value: 1,
+			range: [0, 1]
+		},
+		"zoom (log scale)": {
+			value: 0,
+			range: [-3, 3, 0.1]
+		},
+		"Don't let rest": {
 			value: 0,
 			range: [0, 1]
 		}
 	},
 	charge: {
 		description: 'Repulsive force between each node',
+		proportionalToNumberOfOccurences: {
+			value: 1,
+			range: [0, 1]
+		},
 		proportionalToNumberOfNodes: {
 			value: 0,
 			range: [0, 1]
@@ -30,6 +43,10 @@ const settings = {
 	},
 	linkDistance: {
 		description: 'Optimal distance between connected nodes',
+		proportionalToNumberOfOccurences: {
+			value: 1,
+			range: [0, 1]
+		},
 		proportionalToNumberOfNodes: {
 			value: 0,
 			range: [0, 1]
@@ -46,8 +63,8 @@ const settings = {
 	linkStrength: {
 		description: 'Force applied to maintain that distance',
 		coefficient: {
-			value: 10,
-			range: [10, 300, 10]
+			value: 5,
+			range: [0, 50, 1]
 		},
 		affectedByCoocurence: {
 			value: 0,
@@ -61,22 +78,36 @@ const settings = {
 			range: [0, 10, 0.5]
 		}
 	},
+	friction: {
+		description: 'dampening force on the velocity',
+		strength: {
+			value: 0.5,
+			range: [0, 1, 0.05]
+		}
+	},
 };
 
 module.exports = function ({
-	people,
-	nodes,
-	links
+	nodes
 }, {
 	width = 960,
 	height = 500,
 	place = 'body'
 } = {}) {
 
-	nodes[0].x = width / 2;
-	nodes[0].y = height / 2;
-	nodes[0].fixed = true;
-	nodes[0].drawName = true;
+
+	/**
+	 * Make the svg 10 times larger
+	 */
+
+	const screenWidth = width;
+	const screenHeight = height;
+	width *= 10;
+	height *= 10;
+
+	/**
+	 * Variables
+	 */
 
 	const svg = d3
 		.select(place)
@@ -88,149 +119,255 @@ module.exports = function ({
 	const force = d3.layout
 		.force()
 		.size([width, height])
-		.nodes(nodes)
-		.links(links);
+		.nodes([])
+		.links([])
+		.chargeDistance(500)
+		.friction(0.5);
 
-	// Start with some initial inwards motion
-	force.gravity(1);
+	const drag = force.drag();
 
-	// Restore gravity
-	setTimeout(function () {
-		force
-			.gravity(settings.gravity.strength.value)
-			.start();
-	}, 1500);
 
-	// These will get populated later
-	const labelLinks = [];
-	const labelNodes = [];
+	// Change the default energy value resume restores to.
+	force.oldResume = force.resume;
+	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(energy); };
 
 	const force2 = d3.layout
 		.force()
-		.nodes(labelNodes)
-		.links(labelLinks)
+		.nodes([])
+		.links([])
 		.gravity(0)
-		.linkDistance(0)
-		.linkStrength(8)
-		.charge(-100)
+		.linkDistance(0.5)
+		.linkStrength(10)
+		.chargeDistance(500)
+		.charge(d => d.hasLabel ? -2000 : -100)
+		.friction(0.3)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
 	let link = svg.selectAll('g.link');
+	let nodeGraphic;
 	let labelLink = svg.selectAll('g.anchorLink');
 	let labelNode = svg.selectAll('g.anchorNode');
 
+	/**
+	 * Functions
+	 */
+
+	function autoZoom() {
+		let minX = 0;
+		let minY = 0;
+		let maxX = 0;
+		let maxY = 0;
+
+		force.nodes().forEach(n => {
+			if (n.x < minX) minX = n.x;
+			if (n.y < minY) minY = n.y;
+			if (n.x > maxX) maxX = n.x;
+			if (n.y > maxY) maxY = n.y;
+		});
+
+		// 0.1 seems to be arbritary scaling factor between
+		// d3 positions and the screen space.
+		setZoom(5 / Math.min((maxX - minX)/screenWidth, (maxY - minY)/screenHeight));
+	}
+
+	window.autoZoom = autoZoom;
+
+	function setZoom(zoom = 1) {
+		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
+	}
+
 	function updateDisplay() {
-		nodes[0].drawName = true;
-		link.style('display', l => (l.source.drawLink && l.target.drawLink) ? 'inline' : 'none');
+		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
+		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
+		nodeGraphic.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3);
 		renderVisibleNames();
 	}
 
-	function renderData() {
+	let newItemInterval;
+	function updateData() {
+
+		buildUi();
+
+		const forceLinks = force.links();
+		const forceNodes = force.nodes();
+
+		// Empty
+		forceLinks.splice(0);
+		forceNodes.splice(0);
+
+		// create nodes for each of the labels
+		nodes.forEach(n => {
+			if (!n.labelConfig) {
+				const source = {node: n};
+				const target = {node: n, hasLabel: true, label: n.label};
+
+				n.labelConfig = {
+					source,
+					target,
+					link: {
+						weight: 1,
+						node: n
+					}
+				};
+			}
+		});
+
+		// make the root node special
+		nodes[0].x = width / 2;
+		nodes[0].y = height / 2;
+		// nodes[0].fixed = true;
+		nodes[0].alwaysDrawName = true;
+
+		// Render the empty set of nodes.
+		renderPoints();
+
+		let nodeBuffer = new Set();
+
+		let i = (function *nextNodeToRender() {
+
+			let firstNode = nodes[0];
+			yield firstNode;
+			while(nodeBuffer.size) {
+				let n = nodeBuffer.values().next().value;
+				nodeBuffer.delete(n);
+				yield n;
+			}
+		})();
+
+		// Stop any current display from having
+		// nodes appended to it.
+		clearInterval(newItemInterval);
+		newItemInterval = setInterval(function () {
+
+			// Add the nodes
+			const {value, done} = i.next();
+			if (done) {
+
+				// Give the graph a jiggle after the last node added
+				setTimeout(() => force.start().alpha(0.2), 500);
+				return clearInterval(newItemInterval);
+			}
+
+			forceNodes.push(value);
+
+			console.log(value);
+
+			value.getConnections(1).forEach(n => {
+				if (forceNodes.indexOf(n) === -1) {
+
+					// make sure it is in the chosen from the data
+					if (nodes.indexOf(n) !== -1) {
+						nodeBuffer.add(n);
+					}
+				} else {
+
+					// Already on the diagram link them up
+					forceLinks.push({
+						target: forceNodes.indexOf(value),
+						source: forceNodes.indexOf(n),
+						weight: n.normalizedConnectionWeights
+					});
+				}
+			});
+			renderPoints();
+		}, 250);
+	}
+
+	function renderPoints() {
 
 		link = link.data(force.links());
 		link.enter()
 			.append('svg:line')
 			.attr('class', 'link')
 			.style('stroke', '#000')
+			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('display', 'none')
-			.style('zIndex', -1);
+			.style('pointer-events', 'none')
+			.style('zIndex', -2);
 		link.exit().remove();
 
 		node = node.data(force.nodes());
-		node
+		nodeGraphic = node
 			.enter()
 			.append('svg:g')
-			.attr('class', 'node');
-
-		node
+			.attr('class', 'node')
 			.append('svg:circle')
-			.attr('r', x => Math.sqrt(x.numberOfOccurences) + 2)
-			.style('fill', (x, i) => i === 0 ? '#F64' : '#555')
-			.style('stroke', '#FFF')
-			.style('stroke-width', 3)
+			.attr('r', x => Math.sqrt(x.numberOfOccurences)*2 + 2)
+			.style('fill', (n, i) => i === 0 ? '#F64' : '#555')
+			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
-			.on('mouseover', function (n) {
+			.on('mouseenter', function (n) {
 				n.drawName = true;
 				n.drawLink = true;
 				n.getConnections().forEach(p => p. drawName = true);
 				n.getConnections().forEach(p => p. drawLink = true);
 				updateDisplay();
 			})
-			.on('mouseout', function (n) {
-				if (!settings.display.showAllNames.value) {
-					n.drawName = false;
-					n.getConnections().forEach(p => p. drawName = false);
-				}
-				if (!settings.display.showAllLinks.value) {
-					n.drawLink = false;
-					n.getConnections().forEach(p => p. drawLink = false);
-				}
+			.on('mouseleave', function (n) {
+				n.drawName = false;
+				n.drawLink = false;
+				n.getConnections().forEach(p => p. drawName = false);
+				n.getConnections().forEach(p => p. drawLink = false);
 				updateDisplay();
 			});
 
-		node.call(force.drag);
+		node.call(drag);
 
 		node.exit().remove();
 
-		force.start();
-
-		buildUi();
+		updateDisplay();
+		force.start().alpha(energy);
 	}
-	renderData();
 
-	function renderVisibleNames(clear = false) {
+	function renderVisibleNames() {
+
+		const labelLinks = force2.links();
+		const labelNodes = force2.nodes();
+
+		// Empty
 		labelLinks.splice(0);
 		labelNodes.splice(0);
 
-		// Create nodes
-		if (!clear) {
-
-			// clear the links
-			renderVisibleNames(true);
-
-			nodes
-				.filter(n => n.drawName)
-				.forEach(node => {
-					labelNodes.push({node, x: node.x, y: node.y});
-					labelNodes.push({node, x: node.x, y: node.y, hasLabel: true});
-				});
-
-			labelNodes
-				.filter((n, i) => (i%2))
-				.forEach(function (n, i) {
-					labelLinks.push({
-						source: i * 2,
-						target: i * 2 + 1,
-						weight: 1
-					});
-				});
-
-		}
+		// Add new
+		nodes
+			.filter(n => n.drawName || n.alwaysDrawName || settings.display.showAllNames.value)
+			.forEach(n => {
+				n.labelConfig.target.x = n.x - 20;
+				n.labelConfig.target.y = n.y - 20;
+				n.labelConfig.link.source = labelNodes.push(n.labelConfig.source)-1;
+				n.labelConfig.link.target = labelNodes.push(n.labelConfig.target)-1;
+				labelLinks.push(n.labelConfig.link);
+			});
 
 		labelLink = labelLink.data(force2.links());
 		labelLink
 			.enter()
-			.append('svg:line');
+			.append('svg:line')
+			.style('display', 'none');
 
 		labelLink.exit().remove();
 
 		labelNode = labelNode.data(force2.nodes());
-		labelNode
+		const labelNodeGraphic = labelNode
 			.enter()
 			.append('svg:g');
 
-		labelNode
+		// Needed circle
+		labelNodeGraphic
 			.append('svg:circle')
 			.attr('r', 10)
 			.style('display', 'none');
 
-		labelNode
+		// Label
+		labelNodeGraphic
 			.append('svg:text')
-			.text(d => d.hasLabel ? d.node.label : '')
+			.text(d => d.hasLabel ? d.label : '')
 			.attr('class', 'd3-label')
-			.style('fill', '#555');
+			.style('fill', '#55A');
 
 		labelNode.exit().remove();
 
@@ -251,79 +388,39 @@ module.exports = function ({
 
 	const updateNode = function() {
 		this.attr('transform', function(d) {
-			return 'translate(' + d.x + ',' + d.y + ')';
+			return 'translate(' + (d.x || 0) + ',' + (d.y || 0) + ')';
 		});
 	};
 
-	force.on('tick', function() {
+	function applySettings() {
 
-		force2.start();
-
-		node.call(updateNode);
-		link.call(updateLink);
-	});
-
-	force2.on('tick', function() {
-
-		labelNode.each(function(d, i) {
-			if(i % 2 === 0) {
-
-				// Attatch one end of the Label Link to the node
-				d.x = d.node.x;
-				d.y = d.node.y;
-				d.fixed = true;
-			} else {
-
-				const b = this.childNodes[1].getBBox();
-
-				const diffX = d.x - d.node.x;
-				const diffY = d.y - d.node.y;
-
-				const dist = Math.sqrt(diffX * diffX + diffY * diffY);
-
-				let shiftX = b.width * (diffX - dist) / (dist * 2);
-				shiftX = Math.max(-b.width, Math.min(0, shiftX));
-				const shiftY = 5;
-				this.childNodes[1].setAttribute('transform', 'translate(' + shiftX + ',' + shiftY + ')');
-			}
-		});
-
-		labelLink.call(updateLink);
-		labelNode.call(updateNode);
-	});
-
-	function applySettings(displayOnly) {
-
-		nodes.forEach(p => p.drawName = !!settings.display.showAllNames.value);
-		nodes.forEach(p => p.drawLink = !!settings.display.showAllLinks.value);
 		updateDisplay();
-
-		if (displayOnly) return;
 
 		force
 			.gravity(settings.gravity.strength.value)
+			.friction(settings.friction.strength.value)
 			.linkDistance(l => settings.linkDistance.coefficient.value *
 				Math.pow(l.weight, -settings.linkDistance.affectedByCoocurence.value) *
-				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value)
+				Math.pow(nodes.length, -1 * settings.linkDistance.proportionalToNumberOfNodes.value) *
+				Math.pow(l.target.numberOfOccurences + l.source.numberOfOccurences, settings.linkDistance.proportionalToNumberOfOccurences.value * 0.5)
 			)
-			.charge(-1 *
+			.charge(n => -1 *
 				settings.charge.coefficient.value /
-				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value)
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value) *
+				Math.pow(n.numberOfOccurences, settings.charge.proportionalToNumberOfOccurences.value * 0.5)
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
-			)
-			.start();
+			).start().alpha(energy);
 	}
 
-	applySettings();
+	document.querySelector('.sappy-settings .o-techdocs-card__context')
+		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+
+	document.querySelector('.sappy-people .o-techdocs-card__context')
+		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
 	function buildUi() {
-		document.querySelector('.sappy-settings .o-techdocs-card__context')
-			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
-
-		document.querySelector('.sappy-people .o-techdocs-card__context')
-			.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
 
@@ -364,7 +461,7 @@ module.exports = function ({
 					const inputSlider = e.currentTarget;
 					settings[inputSlider.dataset.actionname][inputSlider.dataset.tweakname].value = inputSlider.value;
 					inputSlider.nextSibling.innerHTML = inputSlider.value;
-					applySettings(inputSlider.dataset.actionname === 'display');
+					applySettings();
 				}, false);
 			});
 
@@ -373,7 +470,7 @@ module.exports = function ({
 				el.addEventListener('change', e => {
 					const checkbox = e.currentTarget;
 					settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value = checkbox.checked ? 1 : 0;
-					applySettings(checkbox.dataset.actionname === 'display');
+					applySettings();
 				}, false);
 			});
 
@@ -382,7 +479,7 @@ module.exports = function ({
 				<label for='people'>Select a starting person
 				<input list='people' name='people' id='people-list'>
 				<datalist id='people'>
-					${Object.keys(unifiedData).map(p => '<option value="' + unifiedData[p].name + '">').join('')}
+					${Object.keys(window.unifiedData).map(p => '<option value="' + window.unifiedData[p].name + '">').join('')}
 				</datalist></label>
 				<input type='submit' value='Submit'>
 			</form>` +
@@ -399,18 +496,13 @@ module.exports = function ({
 					nodes[0].x = undefined;
 					nodes[0].y = undefined;
 					nodes[0].fixed = undefined;
-					nodes[0].drawName = false;
+					nodes[0].alwaysDrawName = false;
 
-					links.splice(0);
-					links.push(...data.links);
 					nodes.splice(0);
 					nodes.push(...data.nodes);
 
-					nodes[0].x = width / 2;
-					nodes[0].y = height / 2;
-					nodes[0].fixed = true;
-
-					renderData();
+					// // Rerender with new data
+					updateData();
 				});
 		}
 
@@ -428,8 +520,13 @@ module.exports = function ({
 
 					// Find the matching node and behave like it does on mouseover
 					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
+
+					// if the node has been removed then this will be undefined
+					if (!n) return;
+
 					n.drawName = true;
 					n.drawLink = true;
+					n.highlight = true;
 					n.getConnections().forEach(p => p. drawName = true);
 					n.getConnections().forEach(p => p. drawLink = true);
 					updateDisplay();
@@ -438,16 +535,43 @@ module.exports = function ({
 
 					// Find the matching node and behave like it does on mouseout
 					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-					if (!settings.display.showAllNames.value) {
-						n.drawName = false;
-						n.getConnections().forEach(p => p. drawName = false);
-					}
-					if (!settings.display.showAllLinks.value) {
-						n.drawLink = false;
-						n.getConnections().forEach(p => p. drawLink = false);
-					}
+
+					// if the node has been removed then this will be undefined
+					if (!n) return;
+					n.drawName = false;
+					n.drawLink = false;
+					n.highlight = false;
+					n.getConnections().forEach(p => p. drawName = false);
+					n.getConnections().forEach(p => p. drawLink = false);
 					updateDisplay();
 				});
 			});
-	};
+	}
+
+	force.on('tick', function() {
+		node.call(updateNode);
+		link.call(updateLink);
+	});
+
+	force2.on('tick', function() {
+		force2.alpha(energy);
+
+		labelNode.each(function(d, i) {
+			if(i % 2 === 0) {
+
+				// The labels are on an elastic tether to the node
+				// they repel each other but try to stay close to the node
+				// this fixes one end to the node.
+				d.x = d.node.x;
+				d.y = d.node.y;
+				d.fixed = true;
+			}
+		});
+
+		labelLink.call(updateLink);
+		labelNode.call(updateNode);
+	});
+
+	updateData();
+	applySettings();
 };

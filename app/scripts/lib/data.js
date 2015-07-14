@@ -14,7 +14,7 @@ const unifiedData = {};
 window.unifiedData = unifiedData;
 const populus = [];
 
-const MIN_NUMBER_OF_NODES = 50;
+const MAX_NUMBER_OF_NODES = 50;
 
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
@@ -44,6 +44,7 @@ class Person {
 		// Update own set of connections.
 		if (!this.connections) {
 			this.connectionWeights = new Map();
+			this.normalizedConnectionWeights = new Map();
 
 			// create people for each connection.
 			this.connections = new Set(
@@ -54,6 +55,7 @@ class Person {
 						}
 						const connectedPerson = getOrCreatePerson(this.island.islanders[i]);
 						this.connectionWeights.set(connectedPerson, numberOfConnections);
+						this.normalizedConnectionWeights.set(connectedPerson, numberOfConnections/this.island.maxConnections);
 						return connectedPerson;
 					})
 					.filter(p => p !== false)
@@ -108,40 +110,25 @@ function fetchJSON(...urls) {
 function getConnectionsForAPerson(id) {
 	return Promise.resolve(unifiedData[id])
 		.then(personData => getOrCreatePerson(personData))
-		.then(rootPerson => [rootPerson.getConnections(1), rootPerson])
-		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(2) : people, rootPerson])
-		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(3) : people, rootPerson])
-		.then(([people, rootPerson]) => [people.size < MIN_NUMBER_OF_NODES ? rootPerson.getConnections(4) : people, rootPerson])
-		.then(([people, rootPerson]) => [Array.from(people), rootPerson])
-		.then(([connectedPeeps, rootPerson]) => {
+		.then(rootPerson => rootPerson.getConnections(4))
+		.then(people => {
 
-			const links = [];
+			let root = people.values().next().value;
 
-			if (connectedPeeps.length === 1) {
-				throw Error(`Not enough people connected`);
-			}
+			// Limit the number of people to the
+			// top by most occurences
+			// remove the root person since they need to be first
+			const selected = Array.from(people)
+				.sort((p1, p2) => p2.numberOfOccurences - p1.numberOfOccurences)
+				.filter(p => p !== root)
+				.slice(0, MAX_NUMBER_OF_NODES - 1);
 
-			const nPeople = connectedPeeps.length;
+			// re-add the root person
+			selected.unshift(root);
 
-			// Link up nodes
-			for(let i = 0; i < nPeople; i++) {
-				for(var j = 0; j < i; j++) {
-					if(connectedPeeps[j].isConnectedTo(connectedPeeps[i])) {
-						links.push({
-							source: i,
-							target: j,
-							weight: connectedPeeps[j].connectionWeights.get(connectedPeeps[i]) / connectedPeeps[j].island.maxConnections
-						});
-					}
-				}
-			}
-
-			return {
-				nodes: connectedPeeps,
-				links
-			};
-
-		});
+			return selected;
+		})
+		.then(nodes => ({nodes}));
 }
 
 window.getConnectionsForAPerson = getConnectionsForAPerson;
