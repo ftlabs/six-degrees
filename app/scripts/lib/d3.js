@@ -272,7 +272,7 @@ module.exports = function ({
 				}
 			});
 			renderPoints();
-		}, 250);
+		}, 100);
 	}
 
 	function renderPoints() {
@@ -417,9 +417,6 @@ module.exports = function ({
 	document.querySelector('.sappy-settings .o-techdocs-card__context')
 		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
-	document.querySelector('.sappy-people .o-techdocs-card__context')
-		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
-
 	function buildUi() {
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
@@ -472,79 +469,6 @@ module.exports = function ({
 					settings[checkbox.dataset.actionname][checkbox.dataset.tweakname].value = checkbox.checked ? 1 : 0;
 					applySettings();
 				}, false);
-			});
-
-		document.querySelector('.sappy-settings_people-list-target').innerHTML = `
-			<form>
-				<label for='people'>Select a starting person
-				<input list='people' name='people' id='people-list'>
-				<datalist id='people'>
-					${Object.keys(window.unifiedData).map(p => '<option value="' + window.unifiedData[p].name + '">').join('')}
-				</datalist></label>
-				<input type='submit' value='Submit'>
-			</form>` +
-			nodes
-				.map(p => `<div data-id="${p.id}" class="sappy-settings_person-selector">${p.name}</div>`)
-				.join('\n');
-
-		function fetchDataForANewPersonById(id) {
-			if (!id) return Promise.reject('no id');
-			return window.getConnectionsForAPerson(id)
-				.then(data => {
-
-					// Reset the rootnode
-					nodes[0].x = undefined;
-					nodes[0].y = undefined;
-					nodes[0].fixed = undefined;
-					nodes[0].alwaysDrawName = false;
-
-					nodes.splice(0);
-					nodes.push(...data.nodes);
-
-					// // Rerender with new data
-					updateData();
-				});
-		}
-
-		document.querySelector('.sappy-settings_people-list-target form').addEventListener('click', function (e) {
-			e.preventDefault();
-			fetchDataForANewPersonById(`people:${e.currentTarget.elements[0].value}`);
-		});
-
-		[...document.querySelectorAll('.sappy-settings_person-selector')]
-			.forEach(function (el) {
-				el.addEventListener('click', e => {
-					fetchDataForANewPersonById(e.currentTarget.dataset.id);
-				});
-				el.addEventListener('mouseenter', e => {
-
-					// Find the matching node and behave like it does on mouseover
-					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-
-					// if the node has been removed then this will be undefined
-					if (!n) return;
-
-					n.drawName = true;
-					n.drawLink = true;
-					n.highlight = true;
-					n.getConnections().forEach(p => p. drawName = true);
-					n.getConnections().forEach(p => p. drawLink = true);
-					updateDisplay();
-				});
-				el.addEventListener('mouseleave', e => {
-
-					// Find the matching node and behave like it does on mouseout
-					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-
-					// if the node has been removed then this will be undefined
-					if (!n) return;
-					n.drawName = false;
-					n.drawLink = false;
-					n.highlight = false;
-					n.getConnections().forEach(p => p. drawName = false);
-					n.getConnections().forEach(p => p. drawLink = false);
-					updateDisplay();
-				});
 			});
 	}
 
