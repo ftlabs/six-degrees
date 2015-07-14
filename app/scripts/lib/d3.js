@@ -10,7 +10,7 @@ const settings = {
 	display: {
 		description: 'Display Settings',
 		showAllNames: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		showAllLinks: {
@@ -243,7 +243,12 @@ module.exports = function ({
 
 			// Add the nodes
 			const {value, done} = i.next();
-			if (done) return clearInterval(newItemInterval);
+			if (done) {
+
+				// Give the graph a jiggle after the last node added
+				setTimeout(() => force.start().alpha(0.2), 500);
+				return clearInterval(newItemInterval);
+			}
 
 			forceNodes.push(value);
 
@@ -267,7 +272,7 @@ module.exports = function ({
 				}
 			});
 			renderPoints();
-		}, 500);
+		}, 250);
 	}
 
 	function renderPoints() {
