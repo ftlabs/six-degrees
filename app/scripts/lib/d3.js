@@ -255,8 +255,6 @@ module.exports = function ({
 
 			forceNodes.push(value);
 
-			console.log(value);
-
 			value.getConnections(1).forEach(n => {
 				if (forceNodes.indexOf(n) === -1) {
 
@@ -304,6 +302,7 @@ module.exports = function ({
 			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
 			.on('mouseenter', function (n) {
+				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
 				n.drawLink = true;
 				n.getConnections().forEach(p => p. drawName = true);
@@ -311,6 +310,7 @@ module.exports = function ({
 				updateDisplay();
 			})
 			.on('mouseleave', function (n) {
+				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = false;
 				n.drawLink = false;
 				n.getConnections().forEach(p => p. drawName = false);
