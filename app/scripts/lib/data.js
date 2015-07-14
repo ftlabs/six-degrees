@@ -101,7 +101,7 @@ function fetchJSON(...urls) {
 	const modal = ui.modal('.o-techdocs-main', `Loading:<br />${urls.join('<br />')}`);
 	return Promise.all(urls.map(url => fetch(url)
 		.then(response => response.text())
-		.then(string => JSON.parse(string)) 
+		.then(string => JSON.parse(string))
 	)).then(results => {
 		modal.remove();
 		return results;

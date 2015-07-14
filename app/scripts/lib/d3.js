@@ -225,13 +225,16 @@ module.exports = function ({
 
 		let nodeBuffer = new Set();
 
+		let nodesToRender = new Set(nodes);
+
 		let i = (function *nextNodeToRender() {
 
 			let firstNode = nodes[0];
 			yield firstNode;
-			while(nodeBuffer.size) {
-				let n = nodeBuffer.values().next().value;
+			while(nodeBuffer.size || nodesToRender.size) {
+				let n = (nodeBuffer.size ? nodeBuffer : nodesToRender).values().next().value;
 				nodeBuffer.delete(n);
+				nodesToRender.delete(n);
 				yield n;
 			}
 		})();
