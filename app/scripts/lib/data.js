@@ -15,7 +15,7 @@ const weeksBack = 5;
 const unifiedData = {};
 const populus = [];
 
-const MAX_NUMBER_OF_NODES = 50;
+const MAX_NUMBER_OF_NODES = 10;
 
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
@@ -162,7 +162,7 @@ function updateData({daysAgo, days}) {
 				});
 			});
 
-			return islandsJSON.islands[0].islanders.slice(0, 10);
+			return islandsJSON.islands[0].islanders.slice(0, MAX_NUMBER_OF_NODES);
 		})
 		.then(getConnectionsForPeople)
 		.catch(function (e) {
@@ -171,9 +171,11 @@ function updateData({daysAgo, days}) {
 		});
 }
 
-module.exports = updateData({
-	daysAgo: weeksBack * 7,
-	days: weeksBack * 7
-});
-
-window.updateData = updateData;
+module.exports.iterator = (function *dataGenerator() {
+	for (let i=0; i<weeksBack; i++) {
+		yield updateData({
+			daysAgo: (weeksBack - i) * 7,
+			days: 7
+		});
+	}
+})();

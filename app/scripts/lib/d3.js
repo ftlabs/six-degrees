@@ -33,11 +33,11 @@ const settings = {
 			range: [0, 1]
 		},
 		proportionalToNumberOfNodes: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 1000,
+			value: 4000,
 			range: [50, 10000, 50]
 		}
 	},
@@ -48,11 +48,11 @@ const settings = {
 			range: [0, 1]
 		},
 		proportionalToNumberOfNodes: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 20,
+			value: 300,
 			range: [0, 400, 5]
 		},
 		affectedByCoocurence: {
@@ -87,9 +87,9 @@ const settings = {
 	},
 };
 
-module.exports = function ({
-	nodes
-}, {
+module.exports = function (
+	nodeIterator
+, {
 	width = 960,
 	height = 500,
 	place = 'body'
@@ -136,10 +136,10 @@ module.exports = function ({
 		.nodes([])
 		.links([])
 		.gravity(0)
-		.linkDistance(0.5)
-		.linkStrength(10)
-		.chargeDistance(500)
-		.charge(d => d.hasLabel ? -2000 : -100)
+		.linkDistance(5)
+		.linkStrength(1)
+		.chargeDistance(50)
+		.charge(d => d.hasLabel ? -1000 : -100)
 		.friction(0.3)
 		.size([width, height]);
 
@@ -186,16 +186,22 @@ module.exports = function ({
 	}
 
 	let newItemInterval;
-	function updateData() {
+	function getNewData() {
 
+		const {value, done} = nodeIterator.next();
+		if (done) {
+			console.log('Done');
+			return;
+		}
+
+		value.then(({nodes}) => updateData(nodes));
+	}
+	window.getNewData = getNewData;
+	function updateData(nodes) {
 		buildUi();
 
 		const forceLinks = force.links();
 		const forceNodes = force.nodes();
-
-		// Empty
-		forceLinks.splice(0);
-		forceNodes.splice(0);
 
 		// create nodes for each of the labels
 		nodes.forEach(n => {
@@ -214,23 +220,24 @@ module.exports = function ({
 			}
 		});
 
-		// make the root node special
-		nodes[0].x = width / 2;
-		nodes[0].y = height / 2;
-		// nodes[0].fixed = true;
-		nodes[0].alwaysDrawName = true;
+		// Detatch broken links
+		const updatedLinks = forceLinks.filter(l => l.target.isConnectedTo(l.source));
+		forceLinks.splice(0);
+		forceLinks.push(...updatedLinks);
 
-		// Render the empty set of nodes.
+		// Add new links
+		
+
+		// Rerender with links detatched
 		renderPoints();
 
 		let nodeBuffer = new Set();
 
-		let nodesToRender = new Set(nodes);
+		// Add nodes not already in the graph
+		let nodesToRender = new Set(nodes.filter(n => forceNodes.indexOf(n) === -1));
 
 		let i = (function *nextNodeToRender() {
 
-			let firstNode = nodes[0];
-			yield firstNode;
 			while(nodeBuffer.size || nodesToRender.size) {
 				let n = (nodeBuffer.size ? nodeBuffer : nodesToRender).values().next().value;
 				nodeBuffer.delete(n);
@@ -321,15 +328,17 @@ module.exports = function ({
 		node.call(drag);
 
 		node.exit().remove();
-
-		updateDisplay();
 		force.start().alpha(energy);
+
+		// Aply the force diagram settingd
+		applySettings();
 	}
 
 	function renderVisibleNames() {
 
 		const labelLinks = force2.links();
 		const labelNodes = force2.nodes();
+		const nodes = force.nodes();
 
 		// Empty
 		labelLinks.splice(0);
@@ -391,13 +400,14 @@ module.exports = function ({
 
 	const updateNode = function() {
 		this.attr('transform', function(d) {
-			return 'translate(' + (d.x || 0) + ',' + (d.y || 0) + ')';
+			return 'translate(' + d.x + ',' + d.y + ')';
 		});
 	};
 
 	function applySettings() {
 
 		updateDisplay();
+		const nodes = force.nodes();
 
 		force
 			.gravity(settings.gravity.strength.value)
@@ -409,7 +419,7 @@ module.exports = function ({
 			)
 			.charge(n => -1 *
 				settings.charge.coefficient.value /
-				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value) *
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value * 0.5) *
 				Math.pow(n.numberOfOccurences, settings.charge.proportionalToNumberOfOccurences.value * 0.5)
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
@@ -428,6 +438,7 @@ module.exports = function ({
 
 		for (let i in settings) {
         	if (settings.hasOwnProperty(i)) {
+				const nodes = force.nodes();
 				let actionName = i;
 				let actionSettings = settings[i];
 
@@ -499,6 +510,5 @@ module.exports = function ({
 		labelNode.call(updateNode);
 	});
 
-	updateData();
-	applySettings();
+	getNewData();
 };
