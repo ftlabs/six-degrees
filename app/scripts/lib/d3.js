@@ -100,6 +100,8 @@ module.exports = function ({
 	 * Make the svg 10 times larger
 	 */
 
+	const screenWidth = width;
+	const screenHeight = height;
 	width *= 10;
 	height *= 10;
 
@@ -150,6 +152,26 @@ module.exports = function ({
 	/**
 	 * Functions
 	 */
+
+	function autoZoom() {
+		let minX = 0;
+		let minY = 0;
+		let maxX = 0;
+		let maxY = 0;
+
+		force.nodes().forEach(n => {
+			if (n.x < minX) minX = n.x;
+			if (n.y < minY) minY = n.y;
+			if (n.x > maxX) maxX = n.x;
+			if (n.y > maxY) maxY = n.y;
+		});
+
+		// 0.1 seems to be arbritary scaling factor between
+		// d3 positions and the screen space.
+		setZoom(5 / Math.min((maxX - minX)/screenWidth, (maxY - minY)/screenHeight));
+	}
+
+	window.autoZoom = autoZoom;
 
 	function setZoom(zoom = 1) {
 		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
@@ -532,8 +554,9 @@ module.exports = function ({
 		labelNode.each(function(d, i) {
 			if(i % 2 === 0) {
 
-				// Attach one end of the Label Link to the node
-				// let the other bounce free avoiding so they can avoid each other
+				// The labels are on an elastic tether to the node
+				// they repel each other but try to stay close to the node
+				// this fixes one end to the node.
 				d.x = d.node.x;
 				d.y = d.node.y;
 				d.fixed = true;
