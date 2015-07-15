@@ -87,9 +87,8 @@ const settings = {
 	},
 };
 
-module.exports = function (
-	nodeIterator
-, {
+module.exports = function ({
+	generator,
 	width = 960,
 	height = 500,
 	place = 'body'
@@ -179,7 +178,8 @@ module.exports = function (
 	function updateDisplay() {
 		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
-		svg.selectAll('.node')
+		svg.selectAll('.node-circle')
+			.attr('r', n => (Math.sqrt(n.numberOfOccurences) * 2 + 2) / (n.age === false ? 1 : n.age))
 			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
 			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('fill', n => n.isRoot ? '#F64' : '#555');
@@ -187,25 +187,26 @@ module.exports = function (
 	}
 
 	let newItemInterval;
+	let iterator = generator();
 	function getNewData() {
 
-		const {value, done} = nodeIterator.next();
+		const {value, done} = iterator.next();
 		if (done) {
-			console.log('Done');
-			return;
+			iterator = generator();
+			return getNewData();
 		}
 
 		value.then(({nodes}) => updateData(nodes));
 	}
 	window.getNewData = getNewData;
-	function updateData(nodes) {
-		buildUi(nodes);
+	function updateData(newNodes) {
+		buildUi(newNodes);
 
 		const forceLinks = force.links();
 		const forceNodes = force.nodes();
 
 		// create nodes for each of the labels
-		nodes.forEach(n => {
+		newNodes.forEach(n => {
 			if (!n.labelConfig) {
 				const source = {node: n};
 				const target = {node: n, hasLabel: true, label: n.label};
@@ -220,6 +221,27 @@ module.exports = function (
 				};
 			}
 		});
+
+		// Age existing nodes
+		forceNodes.forEach(n => {
+			n.age = (n.age ? n.age + 1 : 1);
+		});
+
+		// All current nodes have an age of one
+		newNodes.forEach(n => {
+			n.age = 1;
+		});
+
+		const nodesToKeep = forceNodes.filter(n => {
+
+			const tooOld = n.age > 2;
+			if (tooOld) {
+				n.age = false;
+			}
+			return !tooOld;
+		});
+		forceNodes.splice(0);
+		forceNodes.push(...nodesToKeep);
 
 		// Remove all links
 		forceLinks.splice(0);
@@ -244,15 +266,15 @@ module.exports = function (
 			});
 		});
 
-		nodes[0].isRoot = true;
+		newNodes[0].isRoot = true;
 
-		// Rerender with links detatched
+		// Rerender
 		renderPoints();
 
 		let nodeBuffer = new Set();
 
 		// Add nodes not already in the graph
-		let nodesToRender = new Set(nodes.filter(n => forceNodes.indexOf(n) === -1));
+		let nodesToRender = new Set(newNodes.filter(n => forceNodes.indexOf(n) === -1));
 
 		let i = (function *nextNodeToRender() {
 
@@ -283,11 +305,13 @@ module.exports = function (
 
 			forceNodes.push(value);
 
+			// Check connections and either get them to be added next
+			// or connect them in the graph.
 			value.getConnections(1).forEach(n => {
 				if (forceNodes.indexOf(n) === -1) {
 
 					// make sure it is in the chosen from the data
-					if (nodes.indexOf(n) !== -1) {
+					if (newNodes.indexOf(n) !== -1) {
 						nodeBuffer.add(n);
 					}
 				} else {
@@ -315,7 +339,7 @@ module.exports = function (
 			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('display', 'none')
 			.style('pointer-events', 'none')
-			.style('zIndex', -2);
+			.style('zIndex', -1);
 		link.exit().remove();
 
 		node = node.data(force.nodes());
@@ -323,11 +347,9 @@ module.exports = function (
 			.enter()
 			.append('svg:g')
 			.attr('class', 'node')
-			.append('svg:circle')
-			.attr('r', x => Math.sqrt(x.numberOfOccurences) * 2 + 2)
-			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
-			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
+			.append('svg:circle')
+			.attr('class', 'node-circle')
 			.on('mouseenter', function (n) {
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
@@ -386,7 +408,8 @@ module.exports = function (
 		labelNode = labelNode.data(force2.nodes());
 		const labelNodeGraphic = labelNode
 			.enter()
-			.append('svg:g');
+			.append('svg:g')
+			.style('zIndex', 10);
 
 		// Needed circle
 		labelNodeGraphic

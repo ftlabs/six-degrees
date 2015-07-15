@@ -10,8 +10,6 @@
 const pako = require('pako');
 const ui = require('./ui');
 
-const weeksBack = 5;
-
 const unifiedData = {};
 const populus = [];
 
@@ -171,22 +169,38 @@ function updateData({daysAgo, days}) {
 		});
 }
 
-module.exports.iterator = (function *dataGenerator() {
+const daysBack = 35;
+const stepSize = 1;
+const windowSize = 7;
+
+const configs = [];
+const dataCache = new Map();
+
+for (let i=0; i < daysBack - windowSize; i+=stepSize) {
+	configs.push({
+		daysAgo: daysBack - i,
+		days: windowSize
+	});
+}
+
+module.exports.generator = function *dataGenerator() {
 	const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 	const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-	for (let i=0; i<weeksBack; i++) {
-
-		let date = new Date(Date.now() - 3600 * 24 * 7 * 1000 * (weeksBack - i));
+	for (let config of configs) {
+		let date = new Date(Date.now() - 3600 * 24 * 1000 * config.daysAgo);
 
 		document.querySelector(".date-target .dow").innerHTML = days[date.getDay()];
 		document.querySelector(".date-target .dom").innerHTML = date.getDate();
 		document.querySelector(".date-target .month").innerHTML = months[date.getMonth()];
 		document.querySelector(".date-target .year").innerHTML = date.getFullYear();
 
-		yield updateData({
-			daysAgo: (weeksBack - i) * 7,
-			days: 7
-		});
+		if (dataCache.has(config)) {
+			yield dataCache.get(config);
+		} else {
+			const data = updateData(config);
+			dataCache.set(config, data);
+			yield data;
+		}
 	}
-})();
+};
