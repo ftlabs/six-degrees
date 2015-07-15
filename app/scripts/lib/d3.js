@@ -220,13 +220,27 @@ module.exports = function (
 			}
 		});
 
-		// Detatch broken links
-		const updatedLinks = forceLinks.filter(l => l.target.isConnectedTo(l.source));
+		// Remove all links
 		forceLinks.splice(0);
-		forceLinks.push(...updatedLinks);
 
-		// Add new links
-		
+		// Relink nodes
+		forceNodes.forEach((n, i) => {
+			n.getConnections(1).forEach(n2 => {
+
+				if (n === n2) return;
+
+				// don't link not added nodes yet
+				if (forceNodes.indexOf(n2) === -1) return;
+
+				const newLink = {
+					target: n2,
+					source: n,
+					weight: n.normalizedConnectionWeights.get(n2)
+				};
+
+				forceLinks.push(newLink);
+			});
+		});
 
 		// Rerender with links detatched
 		renderPoints();
@@ -257,6 +271,9 @@ module.exports = function (
 
 				// Give the graph a jiggle after the last node added
 				setTimeout(() => force.start().alpha(0.2), 500);
+
+				// start loading the next slice after a few seconds
+				setTimeout(getNewData, 3000);
 				return clearInterval(newItemInterval);
 			}
 
@@ -275,7 +292,7 @@ module.exports = function (
 					forceLinks.push({
 						target: forceNodes.indexOf(value),
 						source: forceNodes.indexOf(n),
-						weight: n.normalizedConnectionWeights
+						weight: n.normalizedConnectionWeights.get(value)
 					});
 				}
 			});
