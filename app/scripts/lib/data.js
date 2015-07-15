@@ -172,7 +172,18 @@ function updateData({daysAgo, days}) {
 }
 
 module.exports.iterator = (function *dataGenerator() {
+	const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 	for (let i=0; i<weeksBack; i++) {
+
+		let date = new Date(Date.now() - 3600 * 24 * 7 * 1000 * (weeksBack - i));
+
+		document.querySelector(".date-target .dow").innerHTML = days[date.getDay()];
+		document.querySelector(".date-target .dom").innerHTML = date.getDate();
+		document.querySelector(".date-target .month").innerHTML = months[date.getMonth()];
+		document.querySelector(".date-target .year").innerHTML = date.getFullYear();
+
 		yield updateData({
 			daysAgo: (weeksBack - i) * 7,
 			days: 7

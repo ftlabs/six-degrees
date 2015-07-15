@@ -145,7 +145,6 @@ module.exports = function (
 
 	let node = svg.selectAll('g.node');
 	let link = svg.selectAll('g.link');
-	let nodeGraphic;
 	let labelLink = svg.selectAll('g.anchorLink');
 	let labelNode = svg.selectAll('g.anchorNode');
 
@@ -180,8 +179,10 @@ module.exports = function (
 	function updateDisplay() {
 		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
-		nodeGraphic.style('stroke', n => n.highlight ? '#F64' : '#FFF')
-			.style('stroke-width',n => n.highlight ? 5 : 3);
+		svg.selectAll('.node')
+			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3)
+			.style('fill', n => n.isRoot ? '#F64' : '#555');
 		renderVisibleNames();
 	}
 
@@ -198,7 +199,7 @@ module.exports = function (
 	}
 	window.getNewData = getNewData;
 	function updateData(nodes) {
-		buildUi();
+		buildUi(nodes);
 
 		const forceLinks = force.links();
 		const forceNodes = force.nodes();
@@ -225,6 +226,7 @@ module.exports = function (
 
 		// Relink nodes
 		forceNodes.forEach((n, i) => {
+			n.isRoot = false;
 			n.getConnections(1).forEach(n2 => {
 
 				if (n === n2) return;
@@ -241,6 +243,8 @@ module.exports = function (
 				forceLinks.push(newLink);
 			});
 		});
+
+		nodes[0].isRoot = true;
 
 		// Rerender with links detatched
 		renderPoints();
@@ -315,13 +319,12 @@ module.exports = function (
 		link.exit().remove();
 
 		node = node.data(force.nodes());
-		nodeGraphic = node
+		node
 			.enter()
 			.append('svg:g')
 			.attr('class', 'node')
 			.append('svg:circle')
-			.attr('r', x => Math.sqrt(x.numberOfOccurences)*2 + 2)
-			.style('fill', (n, i) => i === 0 ? '#F64' : '#555')
+			.attr('r', x => Math.sqrt(x.numberOfOccurences) * 2 + 2)
 			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
 			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
@@ -329,16 +332,16 @@ module.exports = function (
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
 				n.drawLink = true;
-				n.getConnections().forEach(p => p. drawName = true);
-				n.getConnections().forEach(p => p. drawLink = true);
+				n.getConnections().forEach(p => p.drawName = true);
+				n.getConnections().forEach(p => p.drawLink = true);
 				updateDisplay();
 			})
 			.on('mouseleave', function (n) {
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = false;
 				n.drawLink = false;
-				n.getConnections().forEach(p => p. drawName = false);
-				n.getConnections().forEach(p => p. drawLink = false);
+				n.getConnections().forEach(p => p.drawName = false);
+				n.getConnections().forEach(p => p.drawLink = false);
 				updateDisplay();
 			});
 
@@ -447,15 +450,18 @@ module.exports = function (
 	document.querySelector('.sappy-settings .o-techdocs-card__context')
 		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
-	function buildUi() {
+	function buildUi(newNodes) {
+
+		const nodes = force.nodes();
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
+
+		document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
 
 		let slidersHTML = "";
 
 		for (let i in settings) {
         	if (settings.hasOwnProperty(i)) {
-				const nodes = force.nodes();
 				let actionName = i;
 				let actionSettings = settings[i];
 
