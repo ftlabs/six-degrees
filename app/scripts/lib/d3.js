@@ -234,7 +234,7 @@ module.exports = function ({
 
 		const nodesToKeep = forceNodes.filter(n => {
 
-			const tooOld = n.age > 2;
+			const tooOld = n.age > 3;
 			if (tooOld) {
 				n.age = false;
 			}
