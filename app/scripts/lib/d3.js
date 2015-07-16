@@ -142,6 +142,7 @@ module.exports = function ({
 
 	const drag = force.drag();
 
+	window.force = force;
 
 	// Change the default ENERGY value resume restores to.
 	force.oldResume = force.resume;
@@ -196,7 +197,7 @@ module.exports = function ({
 		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
 		svg.selectAll('.node-circle')
-			.attr('r', n => (Math.sqrt(n.numberOfOccurences) * 2 + 2) / (n.age === false ? 1 : n.age))
+			.attr('r', n => (Math.sqrt(n.numberOfOccurences) * 6 + 3) / (n.age === false ? 1 : n.age))
 			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
 			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('fill', n => n.isRoot ? '#F64' : '#555');

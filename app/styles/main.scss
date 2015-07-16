@@ -111,6 +111,11 @@ body, html {
 	max-width: 18em;
 	z-index: 5;
 
+	visibility: hidden;
+	&:hover {
+		visibility: visible;
+	}
+
 	.collapse-trigger {
 		cursor: pointer;
 	}
