@@ -166,29 +166,37 @@ body, html {
 		box-sizing: border-box;
 	}
 
-	time {
-		font-size: 30px;
-		border-right: 1px dotted #777;
-		padding-right: 10px;
-		margin-right: 10px;
-		/* color: #aaa; */
-		line-height: 50px;
-		flex: 1 0 auto;
+	.time {
+		font-size: 20px;
+		margin-right: 30px;
+		flex: 4 0 auto;
+		min-width: 350px;
+		time {
+			font-weight: bold;
+		}
 	}
 
 	h3 {
-		margin: 0 20px 0 0;
+		margin: 0 10px 0 0;
 		font-weight: normal;
 		font-size: 30px;
-		line-height: 50px;
-		flex: 1 0 auto;
+		line-height: 1;
+		float: left;
 		color: #FFD3A2;
-		min-width: 350px;
+	}
+
+	.bullet {
+		font-size: 65px;
+		line-height: 30px;
+		color: #FF613C;
+		display: inline-block;
+		overflow: hidden;
 	}
 
 	.content {
-		flex: 0.2 1 auto;
+		flex: 1 1 auto;
 		color: #ccc;
+		max-width: 750px;
 	}
 
 	.logo {
