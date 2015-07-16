@@ -4,7 +4,8 @@
  */
 
 'use strict';
-const energy = 0.1;
+const ENERGY = 0.1;
+const NODE_ADD_PERIOD = 200;
 
 const settings = {
 	display: {
@@ -87,6 +88,16 @@ const settings = {
 	},
 };
 
+
+/**
+ * This is what draws the graph using D3.
+ * 
+ * @param  {[type]} options.generator [Required] A generator which produces an iterator, the iterator should output {[Person]}
+ * @param  {Number} options.width     Width of the display port
+ * @param  {Number} options.height    Height of the display port
+ * @param  {String} options.place     Selector to determine where to place the D3 SVG in the body.
+ * @return {void}                   
+ */
 module.exports = function ({
 	generator,
 	width = 960,
@@ -96,7 +107,8 @@ module.exports = function ({
 
 
 	/**
-	 * Make the svg 10 times larger
+	 * Make the svg 10 times larger so that
+	 * we can zoom out by shrinking the svg.
 	 */
 
 	const screenWidth = width;
@@ -131,9 +143,9 @@ module.exports = function ({
 	const drag = force.drag();
 
 
-	// Change the default energy value resume restores to.
+	// Change the default ENERGY value resume restores to.
 	force.oldResume = force.resume;
-	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(energy); };
+	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(ENERGY); };
 
 	const force2 = d3.layout
 		.force()
@@ -258,15 +270,15 @@ module.exports = function ({
 
 				if (n === n2) return;
 
-				// don't link not added nodes yet
+				// Don't link nodes not yet added to the graph
 				if (forceNodes.indexOf(n2) === -1) return;
 
+				// Create a new link
 				const newLink = {
 					target: n2,
 					source: n,
 					weight: n.normalizedConnectionWeights.get(n2)
 				};
-
 				forceLinks.push(newLink);
 			});
 		});
@@ -330,7 +342,7 @@ module.exports = function ({
 				}
 			});
 			renderPoints();
-		}, 100);
+		}, NODE_ADD_PERIOD);
 	}
 
 	function renderPoints() {
@@ -375,7 +387,7 @@ module.exports = function ({
 		node.call(drag);
 
 		node.exit().remove();
-		force.start().alpha(energy);
+		force.start().alpha(ENERGY);
 
 		// Aply the force diagram settingd
 		applySettings();
@@ -472,7 +484,7 @@ module.exports = function ({
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
-			).start().alpha(energy);
+			).start().alpha(ENERGY);
 	}
 
 	document.querySelector('.sappy-settings .o-techdocs-card__context')
@@ -543,7 +555,7 @@ module.exports = function ({
 	});
 
 	force2.on('tick', function() {
-		force2.alpha(energy);
+		force2.alpha(ENERGY);
 
 		labelNode.each(function(d, i) {
 			if(i % 2 === 0) {

@@ -15,6 +15,9 @@ const populus = [];
 
 const MAX_NUMBER_OF_NODES = 10;
 
+const TIME_DATA_COLLECTED_FROM = 1413649806047;
+const DAYS_TO_GO_BACK = Math.floor((Date.now() - TIME_DATA_COLLECTED_FROM)/(24*3600*1000));
+
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
 if (personSearch && personSearch[1]) {
@@ -117,7 +120,7 @@ function getConnectionsForPeople(peopleArray) {
 function updateData({daysAgo, days}) {
 	return (
 			daysAgo && days ?
-			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity?slice=-${daysAgo},${days}`) :
+			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=-${daysAgo},${days}`) :
 			fetchJSON('https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity')
 		 )
 		.then(function([islandsJSON]) {
@@ -169,7 +172,7 @@ function updateData({daysAgo, days}) {
 		});
 }
 
-const daysBack = 35;
+const daysBack = DAYS_TO_GO_BACK;
 const stepSize = 1;
 const windowSize = 7;
 
