@@ -115,6 +115,11 @@ module.exports = function ({
 		.attr('width', width)
 		.attr('height', height);
 
+	svg.append("g").attr("id", "links");
+	svg.append("g").attr("id", "nodes");
+	svg.append("g").attr("id", "anchorLinks");
+	svg.append("g").attr("id", "anchorNodes");
+
 	const force = d3.layout
 		.force()
 		.size([width, height])
@@ -142,10 +147,10 @@ module.exports = function ({
 		.friction(0.3)
 		.size([width, height]);
 
-	let node = svg.selectAll('g.node');
-	let link = svg.selectAll('g.link');
-	let labelLink = svg.selectAll('g.anchorLink');
-	let labelNode = svg.selectAll('g.anchorNode');
+	let link = svg.select("#links").selectAll('g.link');
+	let node = svg.select("#nodes").selectAll('g.node');
+	let labelLink = svg.select("#anchorLinks").selectAll('g.anchorLink');
+	let labelNode = svg.select("#anchorNodes").selectAll('g.anchorNode');
 
 	/**
 	 * Functions
