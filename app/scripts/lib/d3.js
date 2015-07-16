@@ -33,11 +33,11 @@ const settings = {
 			range: [0, 1]
 		},
 		proportionalToNumberOfNodes: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 1000,
+			value: 4000,
 			range: [50, 10000, 50]
 		}
 	},
@@ -48,11 +48,11 @@ const settings = {
 			range: [0, 1]
 		},
 		proportionalToNumberOfNodes: {
-			value: 0,
+			value: 1,
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 20,
+			value: 300,
 			range: [0, 400, 5]
 		},
 		affectedByCoocurence: {
@@ -88,8 +88,7 @@ const settings = {
 };
 
 module.exports = function ({
-	nodes
-}, {
+	generator,
 	width = 960,
 	height = 500,
 	place = 'body'
@@ -136,16 +135,15 @@ module.exports = function ({
 		.nodes([])
 		.links([])
 		.gravity(0)
-		.linkDistance(0.5)
-		.linkStrength(10)
-		.chargeDistance(500)
-		.charge(d => d.hasLabel ? -2000 : -100)
+		.linkDistance(5)
+		.linkStrength(1)
+		.chargeDistance(50)
+		.charge(d => d.hasLabel ? -1000 : -100)
 		.friction(0.3)
 		.size([width, height]);
 
 	let node = svg.selectAll('g.node');
 	let link = svg.selectAll('g.link');
-	let nodeGraphic;
 	let labelLink = svg.selectAll('g.anchorLink');
 	let labelNode = svg.selectAll('g.anchorNode');
 
@@ -180,25 +178,35 @@ module.exports = function ({
 	function updateDisplay() {
 		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
-		nodeGraphic.style('stroke', n => n.highlight ? '#F64' : '#FFF')
-			.style('stroke-width',n => n.highlight ? 5 : 3);
+		svg.selectAll('.node-circle')
+			.attr('r', n => (Math.sqrt(n.numberOfOccurences) * 2 + 2) / (n.age === false ? 1 : n.age))
+			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
+			.style('stroke-width',n => n.highlight ? 5 : 3)
+			.style('fill', n => n.isRoot ? '#F64' : '#555');
 		renderVisibleNames();
 	}
 
 	let newItemInterval;
-	function updateData() {
+	let iterator = generator();
+	function getNewData() {
 
-		buildUi();
+		const {value, done} = iterator.next();
+		if (done) {
+			iterator = generator();
+			return getNewData();
+		}
+
+		value.then(({nodes}) => updateData(nodes));
+	}
+	window.getNewData = getNewData;
+	function updateData(newNodes) {
+		buildUi(newNodes);
 
 		const forceLinks = force.links();
 		const forceNodes = force.nodes();
 
-		// Empty
-		forceLinks.splice(0);
-		forceNodes.splice(0);
-
 		// create nodes for each of the labels
-		nodes.forEach(n => {
+		newNodes.forEach(n => {
 			if (!n.labelConfig) {
 				const source = {node: n};
 				const target = {node: n, hasLabel: true, label: n.label};
@@ -214,24 +222,66 @@ module.exports = function ({
 			}
 		});
 
-		// make the root node special
-		nodes[0].x = width / 2;
-		nodes[0].y = height / 2;
-		// nodes[0].fixed = true;
-		nodes[0].alwaysDrawName = true;
+		// Age existing nodes
+		forceNodes.forEach(n => {
+			n.age = (n.age ? n.age + 1 : 1);
+		});
 
-		// Render the empty set of nodes.
+		// All current nodes have an age of one
+		newNodes.forEach(n => {
+			n.age = 1;
+		});
+
+		const nodesToKeep = forceNodes.filter(n => {
+
+			const tooOld = n.age > 3;
+			if (tooOld) {
+				n.age = false;
+			}
+			return !tooOld;
+		});
+		forceNodes.splice(0);
+		forceNodes.push(...nodesToKeep);
+
+		// Remove all links
+		forceLinks.splice(0);
+
+		// Relink nodes
+		forceNodes.forEach((n, i) => {
+			n.isRoot = false;
+			n.getConnections(1).forEach(n2 => {
+
+				if (n === n2) return;
+
+				// don't link not added nodes yet
+				if (forceNodes.indexOf(n2) === -1) return;
+
+				const newLink = {
+					target: n2,
+					source: n,
+					weight: n.normalizedConnectionWeights.get(n2)
+				};
+
+				forceLinks.push(newLink);
+			});
+		});
+
+		newNodes[0].isRoot = true;
+
+		// Rerender
 		renderPoints();
 
 		let nodeBuffer = new Set();
 
+		// Add nodes not already in the graph
+		let nodesToRender = new Set(newNodes.filter(n => forceNodes.indexOf(n) === -1));
+
 		let i = (function *nextNodeToRender() {
 
-			let firstNode = nodes[0];
-			yield firstNode;
-			while(nodeBuffer.size) {
-				let n = nodeBuffer.values().next().value;
+			while(nodeBuffer.size || nodesToRender.size) {
+				let n = (nodeBuffer.size ? nodeBuffer : nodesToRender).values().next().value;
 				nodeBuffer.delete(n);
+				nodesToRender.delete(n);
 				yield n;
 			}
 		})();
@@ -247,18 +297,21 @@ module.exports = function ({
 
 				// Give the graph a jiggle after the last node added
 				setTimeout(() => force.start().alpha(0.2), 500);
+
+				// start loading the next slice after a few seconds
+				setTimeout(getNewData, 3000);
 				return clearInterval(newItemInterval);
 			}
 
 			forceNodes.push(value);
 
-			console.log(value);
-
+			// Check connections and either get them to be added next
+			// or connect them in the graph.
 			value.getConnections(1).forEach(n => {
 				if (forceNodes.indexOf(n) === -1) {
 
 					// make sure it is in the chosen from the data
-					if (nodes.indexOf(n) !== -1) {
+					if (newNodes.indexOf(n) !== -1) {
 						nodeBuffer.add(n);
 					}
 				} else {
@@ -267,12 +320,12 @@ module.exports = function ({
 					forceLinks.push({
 						target: forceNodes.indexOf(value),
 						source: forceNodes.indexOf(n),
-						weight: n.normalizedConnectionWeights
+						weight: n.normalizedConnectionWeights.get(value)
 					});
 				}
 			});
 			renderPoints();
-		}, 250);
+		}, 100);
 	}
 
 	function renderPoints() {
@@ -286,47 +339,48 @@ module.exports = function ({
 			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('display', 'none')
 			.style('pointer-events', 'none')
-			.style('zIndex', -2);
+			.style('zIndex', -1);
 		link.exit().remove();
 
 		node = node.data(force.nodes());
-		nodeGraphic = node
+		node
 			.enter()
 			.append('svg:g')
 			.attr('class', 'node')
-			.append('svg:circle')
-			.attr('r', x => Math.sqrt(x.numberOfOccurences)*2 + 2)
-			.style('fill', (n, i) => i === 0 ? '#F64' : '#555')
-			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
-			.style('stroke-width',n => n.highlight ? 5 : 3)
 			.style('zIndex', -1)
+			.append('svg:circle')
+			.attr('class', 'node-circle')
 			.on('mouseenter', function (n) {
+				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
 				n.drawLink = true;
-				n.getConnections().forEach(p => p. drawName = true);
-				n.getConnections().forEach(p => p. drawLink = true);
+				n.getConnections().forEach(p => p.drawName = true);
+				n.getConnections().forEach(p => p.drawLink = true);
 				updateDisplay();
 			})
 			.on('mouseleave', function (n) {
+				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = false;
 				n.drawLink = false;
-				n.getConnections().forEach(p => p. drawName = false);
-				n.getConnections().forEach(p => p. drawLink = false);
+				n.getConnections().forEach(p => p.drawName = false);
+				n.getConnections().forEach(p => p.drawLink = false);
 				updateDisplay();
 			});
 
 		node.call(drag);
 
 		node.exit().remove();
-
-		updateDisplay();
 		force.start().alpha(energy);
+
+		// Aply the force diagram settingd
+		applySettings();
 	}
 
 	function renderVisibleNames() {
 
 		const labelLinks = force2.links();
 		const labelNodes = force2.nodes();
+		const nodes = force.nodes();
 
 		// Empty
 		labelLinks.splice(0);
@@ -354,7 +408,8 @@ module.exports = function ({
 		labelNode = labelNode.data(force2.nodes());
 		const labelNodeGraphic = labelNode
 			.enter()
-			.append('svg:g');
+			.append('svg:g')
+			.style('zIndex', 10);
 
 		// Needed circle
 		labelNodeGraphic
@@ -388,13 +443,14 @@ module.exports = function ({
 
 	const updateNode = function() {
 		this.attr('transform', function(d) {
-			return 'translate(' + (d.x || 0) + ',' + (d.y || 0) + ')';
+			return 'translate(' + d.x + ',' + d.y + ')';
 		});
 	};
 
 	function applySettings() {
 
 		updateDisplay();
+		const nodes = force.nodes();
 
 		force
 			.gravity(settings.gravity.strength.value)
@@ -406,7 +462,7 @@ module.exports = function ({
 			)
 			.charge(n => -1 *
 				settings.charge.coefficient.value /
-				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value) *
+				Math.pow(nodes.length, settings.charge.proportionalToNumberOfNodes.value * 0.5) *
 				Math.pow(n.numberOfOccurences, settings.charge.proportionalToNumberOfOccurences.value * 0.5)
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
@@ -417,12 +473,13 @@ module.exports = function ({
 	document.querySelector('.sappy-settings .o-techdocs-card__context')
 		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
 
-	document.querySelector('.sappy-people .o-techdocs-card__context')
-		.addEventListener('click', e => e.currentTarget.parentNode.classList.toggle('collapsed'));
+	function buildUi(newNodes) {
 
-	function buildUi() {
+		const nodes = force.nodes();
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
+
+		document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
 
 		let slidersHTML = "";
 
@@ -473,79 +530,6 @@ module.exports = function ({
 					applySettings();
 				}, false);
 			});
-
-		document.querySelector('.sappy-settings_people-list-target').innerHTML = `
-			<form>
-				<label for='people'>Select a starting person
-				<input list='people' name='people' id='people-list'>
-				<datalist id='people'>
-					${Object.keys(window.unifiedData).map(p => '<option value="' + window.unifiedData[p].name + '">').join('')}
-				</datalist></label>
-				<input type='submit' value='Submit'>
-			</form>` +
-			nodes
-				.map(p => `<div data-id="${p.id}" class="sappy-settings_person-selector">${p.name}</div>`)
-				.join('\n');
-
-		function fetchDataForANewPersonById(id) {
-			if (!id) return Promise.reject('no id');
-			return window.getConnectionsForAPerson(id)
-				.then(data => {
-
-					// Reset the rootnode
-					nodes[0].x = undefined;
-					nodes[0].y = undefined;
-					nodes[0].fixed = undefined;
-					nodes[0].alwaysDrawName = false;
-
-					nodes.splice(0);
-					nodes.push(...data.nodes);
-
-					// // Rerender with new data
-					updateData();
-				});
-		}
-
-		document.querySelector('.sappy-settings_people-list-target form').addEventListener('click', function (e) {
-			e.preventDefault();
-			fetchDataForANewPersonById(`people:${e.currentTarget.elements[0].value}`);
-		});
-
-		[...document.querySelectorAll('.sappy-settings_person-selector')]
-			.forEach(function (el) {
-				el.addEventListener('click', e => {
-					fetchDataForANewPersonById(e.currentTarget.dataset.id);
-				});
-				el.addEventListener('mouseenter', e => {
-
-					// Find the matching node and behave like it does on mouseover
-					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-
-					// if the node has been removed then this will be undefined
-					if (!n) return;
-
-					n.drawName = true;
-					n.drawLink = true;
-					n.highlight = true;
-					n.getConnections().forEach(p => p. drawName = true);
-					n.getConnections().forEach(p => p. drawLink = true);
-					updateDisplay();
-				});
-				el.addEventListener('mouseleave', e => {
-
-					// Find the matching node and behave like it does on mouseout
-					let n = nodes.filter(p => e.currentTarget.dataset.id === p.id)[0];
-
-					// if the node has been removed then this will be undefined
-					if (!n) return;
-					n.drawName = false;
-					n.drawLink = false;
-					n.highlight = false;
-					n.getConnections().forEach(p => p. drawName = false);
-					n.getConnections().forEach(p => p. drawLink = false);
-					updateDisplay();
-				});
-			});
 	}
 
 	force.on('tick', function() {
@@ -572,6 +556,5 @@ module.exports = function ({
 		labelNode.call(updateNode);
 	});
 
-	updateData();
-	applySettings();
+	getNewData();
 };

@@ -11,10 +11,9 @@ const pako = require('pako');
 const ui = require('./ui');
 
 const unifiedData = {};
-window.unifiedData = unifiedData;
 const populus = [];
 
-const MAX_NUMBER_OF_NODES = 50;
+const MAX_NUMBER_OF_NODES = 10;
 
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
@@ -107,97 +106,101 @@ function fetchJSON(...urls) {
 	});
 }
 
-function getConnectionsForAPerson(id) {
-	return Promise.resolve(unifiedData[id])
-		.then(personData => getOrCreatePerson(personData))
-		.then(rootPerson => rootPerson.getConnections(4))
-		.then(people => {
+function getConnectionsForPeople(peopleArray) {
 
-			let root = people.values().next().value;
-
-			// Limit the number of people to the
-			// top by most occurences
-			// remove the root person since they need to be first
-			const selected = Array.from(people)
-				.sort((p1, p2) => p2.numberOfOccurences - p1.numberOfOccurences)
-				.filter(p => p !== root)
-				.slice(0, MAX_NUMBER_OF_NODES - 1);
-
-			// re-add the root person
-			selected.unshift(root);
-
-			return selected;
-		})
-		.then(nodes => ({nodes}));
+	// Each person should populate their connections
+	peopleArray = peopleArray.map(person => getOrCreatePerson(person));
+	peopleArray.forEach(person => person.getConnections(1));
+	return {nodes: peopleArray};
 }
 
-window.getConnectionsForAPerson = getConnectionsForAPerson;
+function updateData({daysAgo, days}) {
+	return (
+			daysAgo && days ?
+			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity?slice=-${daysAgo},${days}`) :
+			fetchJSON('https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity')
+		 )
+		.then(function([islandsJSON]) {
 
-module.exports = fetchJSON(
-		'https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people',
-		'https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity'
-	)
-	.then(([peopleJson, islandsJSON]) => [
-		peopleJson.metadatums_by_type.people.filter(p => islandsJSON.isolateds.indexOf(p) === -1),
-		islandsJSON
-	])
-	.then(function ([people, islandsJSON]) {
-
-		people.map(function (p) {
-			unifiedData[p] = {
-				id: p,
-				name: p.slice(7)
-			};
-			return unifiedData;
-		});
-
-		islandsJSON.islands.forEach(function (island) {
-
-			island.maxConnections = island.ambassador[1];
-
-			island.islanders = island.islanders.map(function (islander, index) {
-				const id = islander[0];
-				unifiedData[id].numberOfOccurences = islander[1];
-				unifiedData[id].isAmbassador = (id === island.ambassador[0]);
-				unifiedData[id].island = island;
-				unifiedData[id].islandIndex = index;
-
-				// update the source data to have objects
-				// rather than arrays.
-				return unifiedData[id];
+			let peopleList = [];
+			islandsJSON.islands.forEach(function (island) {
+				peopleList.push(...island.islanders.map(islanders => islanders[0]));
 			});
-		});
 
-		return unifiedData;
-	})
-	.then(function (people) {
+			return [
+				peopleList,
+				islandsJSON
+			];
+		})
+		.then(function ([people, islandsJSON]) {
 
-		if (personSearch) {
-			return 'people:' + personSearch;
-		}
-
-		const modal = ui.modal('.o-techdocs-main', `
-			<form>
-				<label for='people'>Select a starting person
-				<input list='people' name='people' id='people-list'>
-				<datalist id='people'>
-					${Object.keys(people).map(p => '<option value="' + people[p].name + '">').join('')}
-				</datalist></label>
-				<input type='submit' value='Submit'>
-			</form>`);
-
-		return new Promise(function (resolve) {
-			modal.el.querySelector('form').addEventListener('submit', function selectFromModal(e) {
-				e.preventDefault();
-				if (e.currentTarget.elements[0].value) {
-					modal.remove();
-					resolve(`people:${e.target.elements[0].value}`);
-				}
+			people.map(function (p) {
+				unifiedData[p] = unifiedData[p] || {
+					id: p,
+					name: p.slice(7)
+				};
+				return unifiedData;
 			});
+
+			islandsJSON.islands.forEach(function (island) {
+
+				island.maxConnections = island.ambassador[1];
+
+				island.islanders = island.islanders.map(function (islander, index) {
+					const id = islander[0];
+					unifiedData[id].numberOfOccurences = islander[1];
+					unifiedData[id].isAmbassador = (id === island.ambassador[0]);
+					unifiedData[id].island = island;
+					unifiedData[id].islandIndex = index;
+					unifiedData[id].connections = undefined;
+
+					// update the source data to have objects
+					// rather than arrays.
+					return unifiedData[id];
+				});
+			});
+
+			return islandsJSON.islands[0].islanders.slice(0, MAX_NUMBER_OF_NODES);
+		})
+		.then(getConnectionsForPeople)
+		.catch(function (e) {
+			ui.modal('.o-techdocs-main', `Error: ${e.message}`);
+			throw e;
 		});
-	})
-	.then(getConnectionsForAPerson)
-	.catch(function (e) {
-		ui.modal('.o-techdocs-main', `Error: ${e.message}`);
-		throw e;
+}
+
+const daysBack = 35;
+const stepSize = 1;
+const windowSize = 7;
+
+const configs = [];
+const dataCache = new Map();
+
+for (let i=0; i < daysBack - windowSize; i+=stepSize) {
+	configs.push({
+		daysAgo: daysBack - i,
+		days: windowSize
 	});
+}
+
+module.exports.generator = function *dataGenerator() {
+	const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+	for (let config of configs) {
+		let date = new Date(Date.now() - 3600 * 24 * 1000 * config.daysAgo);
+
+		document.querySelector(".date-target .dow").innerHTML = days[date.getDay()];
+		document.querySelector(".date-target .dom").innerHTML = date.getDate();
+		document.querySelector(".date-target .month").innerHTML = months[date.getMonth()];
+		document.querySelector(".date-target .year").innerHTML = date.getFullYear();
+
+		if (dataCache.has(config)) {
+			yield dataCache.get(config);
+		} else {
+			const data = updateData(config);
+			dataCache.set(config, data);
+			yield data;
+		}
+	}
+};
