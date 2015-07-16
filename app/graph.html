@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+<html class="core">
+	<head>
+		<meta charset="utf-8">
+		<meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+
+		<title>Six Degrees of Angela Merkel</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<script>
+			/* global document, window */
+			var cutsTheMustard = ('querySelector' in document && 'localStorage' in window && 'addEventListener' in window);
+			if (cutsTheMustard) {
+				document.documentElement.className = document.documentElement.className.replace(/\bcore\b/g, 'enhanced');
+			}
+		</script>
+
+		<link href="//build.origami.ft.com/bundles/css?modules=o-fonts@^1.6.7,o-ft-icons@^2.3.6,o-techdocs,o-grid,o-forms,o-buttons" rel="stylesheet">
+		<link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.css" rel="stylesheet">
+
+		<!-- build:css styles/main.css -->
+		<link rel="stylesheet" href="styles/main.css">
+		<!-- endbuild -->
+
+		<link rel="shortcut icon" href="/favicon.ico">
+
+	</head>
+	<body class='o-techdocs'>
+
+		<div class="o-techdocs-layout">
+			<div class="o-techdocs-main o-techdocs-main--fullwidth o-techdocs-content">
+
+				<div class="settings-wrapper">
+					<div class="o-techdocs-card sappy-settings collapsed">
+						<div class="o-techdocs-card__context collapse-trigger">
+							<div class="o-techdocs-card__icon"><i class="fa fa-gear"></i></div>
+							<div class="o-techdocs-card__heading">
+								<div class="o-techdocs-card__title">Graph Settings</div>
+								<div class="o-techdocs-card__subtitle">Tweak parameters for the graph</div>
+							</div>
+						</div>
+						<div class="o-techdocs-card__actions collapsable">
+							<div class="sappy-settings_settings-sliders"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="footer">
+			<div class="logo">
+				<img src="http://image.webservices.ft.com/v1/images/raw/fticon:brand-ft?width=250&amp;source=docs&amp;tint=333333,333333">
+			</div>
+			<div class="time">
+				<div>
+					<h3 class="person-of-interest-target">David Cameron</h3>
+					<span class="bullet">•</span>
+				</div>
+				<div>
+					<span>Most newsworthy person on </span>
+					<time class="date-target" datetime="2015-07-13"><span class="dow">Monday</span>, <span class="dom">13</span> <span class="month">July</span> <span class="year">2015</span></time>
+				</div>
+			</div>
+			<div class="content">
+				This visualisation shows how connections between people featured in the FT change over time.  Learn more about our <span class="brand">Six degrees of Angela Merkel</span> project at <a href="http://labs.ft.com">labs.ft.com</a>
+			</div>
+		</div>
+
+		<!-- build:js scripts/main.js -->
+		<script src="scripts/main.js"></script>
+		<!-- endbuild -->
+	</body>
+</html>

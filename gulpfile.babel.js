@@ -229,8 +229,8 @@ gulp.task('wiredep', () => {
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
 		.pipe(require('gulp-gh-pages')({
-			origin: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
-			remoteUrl: 'https://git.heroku.com/ftlabs-slurpage-sappy.git',
+			origin: 'https://git.heroku.com/ftlabs-six-degrees.git',
+			remoteUrl: 'https://git.heroku.com/ftlabs-six-degrees.git',
 			branch: 'master'
 		}));
 });
