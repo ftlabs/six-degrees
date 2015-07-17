@@ -111,6 +111,7 @@ function fetchJSON(...urls) {
 	const modal = ui.modal('.o-techdocs-main', `Loading: ${urls.join(', ')}`);
 	console.log('Loading: ', urls);
 	return Promise.all(urls.map(url => {
+		url = "/proxy.php?url="+url;
 		return fetch(url)
 			.then(response => response.text())
 			.then(string => JSON.parse(string))
