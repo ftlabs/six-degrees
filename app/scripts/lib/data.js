@@ -217,6 +217,7 @@ module.exports.generator = function *dataGenerator() {
 		// Refresh the page on a new day.
 		if ((new Date()).getDate() !== currentDate) {
 			location.reload();
+			break;
 		}
 
 		if (dataCache.has(config)) {
