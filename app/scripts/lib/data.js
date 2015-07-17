@@ -17,6 +17,7 @@ const MAX_NUMBER_OF_NODES = 10;
 
 const TIME_DATA_COLLECTED_FROM = 1413649806047;
 const DAYS_TO_GO_BACK = Math.floor((Date.now() - TIME_DATA_COLLECTED_FROM)/(24*3600*1000));
+const currentDate = (new Date()).getDate();
 
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
@@ -212,6 +213,11 @@ module.exports.generator = function *dataGenerator() {
 		document.querySelector(".date-target .dom").innerHTML = date.getDate();
 		document.querySelector(".date-target .month").innerHTML = months[date.getMonth()];
 		document.querySelector(".date-target .year").innerHTML = date.getFullYear();
+
+		// Refresh the page on a new day.
+		if ((new Date()).getDate() !== currentDate) {
+			location.reload();
+		}
 
 		if (dataCache.has(config)) {
 			yield dataCache.get(config);
