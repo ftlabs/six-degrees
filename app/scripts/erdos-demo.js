@@ -1,3 +1,5 @@
+/* global fetch, console */
+
 'use strict';
 
 var dom = {
@@ -8,7 +10,7 @@ var dom = {
 	errormsg: document.querySelector('#errormsg'),
 	result: document.querySelector('#result'),
 	peoplecount: document.querySelector('#people-count'),
-}
+};
 
 fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
 	.then(response => response.text())
@@ -47,20 +49,19 @@ function renderErdos(from, to) {
 		.then(function(data) {
 			if (!('chain' in data)) throw new Error ("No chain");
 			dom.errormsg.classList.remove('visible');
-			dom.result.innerHTML = `<li class='person'>${detagify(from)}</li>`
-			 	+ data.fleshed_out_chain.map(rel => {
-					return `<ul class='articles'>`
-						+ rel.articles.map(article => {
-							let img = '';
-							if (article.es_data && article.es_data.primary_img) {
-								img = `<img src='${article.es_data.primary_img.url}' alt='${article.es_data.primary_img.alt}'>`;
-							}
+			dom.result.innerHTML = `<li class='person'>${detagify(from)}</li>` +
+				data.fleshed_out_chain.map(rel => {
+					return `<ul class='articles'>` +
+						rel.articles.map(article => {
+							let img = ((article.es_data && article.es_data.primary_img) && `<img src='${article.es_data.primary_img.url}' alt='${article.es_data.primary_img.alt}'>`) || '';
+							let priTheme = (article.metadata && article.metadata.filter(str => str.indexOf('primaryTheme') !== -1).map(str => str.replace(/^primaryTheme\:\w+\:/, '')).join(', ')) || "";
 							let pattern = new RegExp('('+detagify(rel.from)+'|'+detagify(rel.to)+')', 'ig');
 							let highlighted = article.excerpt.replace(pattern, '<strong>$1</strong>');
-							return `<li>${img}<a href='${article.location.uri}'>${article.title}</a><p>${highlighted}</p></li>`;
-						}).join('')
-						+ `</ul>`
-						+ `<li class='person'>${detagify(rel.to)}</li>`
+							if (priTheme) priTheme = `<div class="themes">${priTheme}</div>`;
+							return `<li>${priTheme}${img}<a href='${article.location.uri}'>${article.title}</a><p>${highlighted}</p></li>`;
+						}).join('') +
+						`</ul>` +
+						`<li class='person'>${detagify(rel.to)}</li>`
 					;
 				}).join('')
 			;
