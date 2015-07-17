@@ -8,14 +8,17 @@ body, html {
 }
 
 .modal {
-	padding: 0.1em;
-	box-shadow: 0 0 2em -1em black;
-	background-color: white;
 	position: fixed;
-	top: 0;
+	bottom: 77px;
 	left: 0;
-	z-index: 10;
-	border-radius: 0 0 0.3em 0;
+	top: auto;
+	width: 100%;
+	opacity: 0.5;
+	font-size: 12px;
+	text-align: right;
+	box-sizing: border-box;
+	padding: 3px 5px;
+	background-color: rgba(0, 0, 0, 0);
 }
 
 .d3-svg {
