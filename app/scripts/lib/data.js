@@ -202,6 +202,10 @@ for (let i=0; i < daysBack - windowSize; i+=stepSize) {
 	});
 }
 
+function renderTopics(topicList) {
+	document.querySelector('.topics_topic-list').innerHTML = topicList.map(topic => `<li>${topic}</li>`).join('\n');
+}
+
 module.exports.generator = function *dataGenerator() {
 	const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 	const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -221,11 +225,30 @@ module.exports.generator = function *dataGenerator() {
 		}
 
 		if (dataCache.has(config)) {
-			yield dataCache.get(config);
+			renderTopics(dataCache.get(config).topics);
+			yield Promise.resolve(dataCache.get(config).nodes);
 		} else {
-			const data = updateData(config);
-			dataCache.set(config, data);
-			yield data;
+			yield Promise.all([
+				fetchJSON('http://ftlabs-sapi-capi-slurp-slice.herokuapp.com/metadatums_freq/by_type/primaryTheme/by_type' + `?slice=${config.daysAgo},${config.days}`),
+				updateData(config)
+			])
+			.then(([topicsJson, nodes]) => {
+
+				return [
+					topicsJson[0]
+						.metadatums_freq_by_type_by_type
+						.primaryTheme
+						.topics
+						.slice(0,5)
+						.map(topic => topic[0].slice(7)),
+					nodes
+				];
+			})
+			.then(([topics, nodes]) => {
+				dataCache.set(config, {topics, nodes});
+				renderTopics(dataCache.get(config).topics);
+				return nodes;
+			});
 		}
 	}
 };
