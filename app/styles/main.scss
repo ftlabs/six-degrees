@@ -9,13 +9,12 @@ body, html {
 
 .modal {
 	position: fixed;
-	bottom: 77px;
+	bottom: 0;
 	left: 0;
 	top: auto;
 	width: 100%;
 	opacity: 0.5;
 	font-size: 12px;
-	text-align: right;
 	box-sizing: border-box;
 	padding: 3px 5px;
 	background-color: rgba(0, 0, 0, 0);
