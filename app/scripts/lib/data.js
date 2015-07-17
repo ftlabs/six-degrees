@@ -108,7 +108,7 @@ function getOrCreatePerson(options) {
 
 function fetchJSON(...urls) {
 
-	const modal = ui.modal('.o-techdocs-main', `Loading:<br />${urls.join('<br />')}`);
+	const modal = ui.modal('.o-techdocs-main', `Loading: ${urls.join(', ')}`);
 	console.log('Loading: ', urls);
 	return Promise.all(urls.map(url => fetch(url)
 		.then(response => response.text())
