@@ -144,7 +144,7 @@ module.exports = function ({
 
 	window.force = force;
 
-	// Change the default ENERGY value resume restores to.
+	// Change the default energy value resume restores the force system to.
 	force.oldResume = force.resume;
 	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(ENERGY); };
 
@@ -253,6 +253,8 @@ module.exports = function ({
 			});
 		});
 
+
+		// Remove any nodes which have been around too long
 		forceNodes.forEach((n, i) => {
 
 			const tooOld = n.age > 3;
@@ -263,6 +265,7 @@ module.exports = function ({
 			return !tooOld;
 		});
 
+		// Give the most mentioned node special styling
 		newNodes[0].isRoot = true;
 
 		let nodeBuffer = new Set();
@@ -317,22 +320,7 @@ module.exports = function ({
 		}, NODE_ADD_PERIOD);
 	}
 
-	function removeNode(n) {
-		const forceNodes = force.nodes();
-		const i = forceNodes.indexOf(n);
-		if (i === -1) return;
-		forceNodes.splice(i, 1);
-		renderPoints();
-		renderLinks();
-		applySettings();
-		force.start();
-	}
-
 	function renderPoints() {
-
-		force.nodes().forEach(n => {
-			n.weight = 1;
-		});
 
 		node = node.data(force.nodes(), n => n.name);
 		node
@@ -358,8 +346,7 @@ module.exports = function ({
 				n.getConnections().forEach(p => p.drawName = false);
 				n.getConnections().forEach(p => p.drawLink = false);
 				updateDisplay();
-			})
-			.on('click', removeNode);
+			});
 
 		node.call(drag);
 
@@ -374,7 +361,7 @@ module.exports = function ({
 		// Remove all links
 		forceLinks.splice(0);
 
-		// Relink nodes
+		// Re-create links between nodes
 		forceNodes.forEach(n => {
 
 			forceNodes.forEach(n2 => {
