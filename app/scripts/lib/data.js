@@ -229,7 +229,7 @@ module.exports.generator = function *dataGenerator() {
 			yield Promise.resolve(dataCache.get(config).nodes);
 		} else {
 			yield Promise.all([
-				fetchJSON('http://ftlabs-sapi-capi-slurp-slice.herokuapp.com/metadatums_freq/by_type/primaryTheme/by_type' + `?slice=${config.daysAgo},${config.days}`),
+				fetchJSON('http://ftlabs-sapi-capi-slurp-slice.herokuapp.com/metadatums_freq/by_type/primaryTheme/by_type' + `?slice=-${config.daysAgo},${config.days}`),
 				updateData(config)
 			])
 			.then(([topicsJson, nodes]) => {
