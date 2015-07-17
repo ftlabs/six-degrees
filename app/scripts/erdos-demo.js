@@ -58,7 +58,7 @@ function renderErdos(from, to) {
 							let pattern = new RegExp('('+detagify(rel.from)+'|'+detagify(rel.to)+')', 'ig');
 							let highlighted = article.excerpt.replace(pattern, '<strong>$1</strong>');
 							if (priTheme) priTheme = `<div class="themes">${priTheme}</div>`;
-							return `<li>${priTheme}${img}<a href='${article.location.uri}'>${article.title}</a><p>${highlighted}</p></li>`;
+							return `<li>${priTheme}${img}<a href='${article.location.uri}?ftcamp=engage/extensions/sixdegrees_erdoschain/web/sixdegrees/ftlabs'>${article.title}</a><p>${highlighted}</p></li>`;
 						}).join('') +
 						`</ul>` +
 						`<li class='person'>${detagify(rel.to)}</li>`
