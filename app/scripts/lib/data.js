@@ -15,6 +15,9 @@ const populus = [];
 
 const MAX_NUMBER_OF_NODES = 10;
 
+const TIME_DATA_COLLECTED_FROM = 1413649806047;
+const DAYS_TO_GO_BACK = Math.floor((Date.now() - TIME_DATA_COLLECTED_FROM)/(24*3600*1000));
+
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
 if (personSearch && personSearch[1]) {
@@ -31,6 +34,9 @@ class Person {
 		this.island = personData.island;
 		this.islandIndex = personData.islandIndex;
 		this.style = 'default';
+		this.connectionWeights = new Map();
+		this.normalizedConnectionWeights = new Map();
+		this.connections = new Set();
 
 		//unpack island
 		if (typeof this.island.connections.unpacked === 'undefined') {
@@ -38,16 +44,19 @@ class Person {
 		}
 	}
 
+	clearConnectionCache() {
+		this.connections.clear();
+		this.connectionWeights.clear();
+		this.normalizedConnectionWeights.clear();
+	}
+
 	getConnections(maxDepth=1, depth=1) {
 
 		// Update own set of connections.
-		if (!this.connections) {
-			this.connectionWeights = new Map();
-			this.normalizedConnectionWeights = new Map();
+		if (!this.connections.size) {
 
 			// create people for each connection.
-			this.connections = new Set(
-				this.island.connections.unpacked[this.islandIndex]
+			const connections = this.island.connections.unpacked[this.islandIndex]
 					.map((numberOfConnections, i) => {
 						if (numberOfConnections === 0) {
 							return false;
@@ -57,8 +66,11 @@ class Person {
 						this.normalizedConnectionWeights.set(connectedPerson, numberOfConnections/this.island.maxConnections);
 						return connectedPerson;
 					})
-					.filter(p => p !== false)
-			);
+					.filter(p => p !== false);
+
+			if (connections.length) {
+				this.connections.add(...connections);
+			}
 		}
 
 		const collectedPeople = new Set([this]);
@@ -94,13 +106,15 @@ function getOrCreatePerson(options) {
 	return np;
 }
 
-
 function fetchJSON(...urls) {
+
 	const modal = ui.modal('.o-techdocs-main', `Loading:<br />${urls.join('<br />')}`);
+	console.log('Loading: ', urls);
 	return Promise.all(urls.map(url => fetch(url)
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
 	)).then(results => {
+
 		modal.remove();
 		return results;
 	});
@@ -117,7 +131,7 @@ function getConnectionsForPeople(peopleArray) {
 function updateData({daysAgo, days}) {
 	return (
 			daysAgo && days ?
-			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity?slice=-${daysAgo},${days}`) :
+			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=-${daysAgo},${days}`) :
 			fetchJSON('https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity')
 		 )
 		.then(function([islandsJSON]) {
@@ -152,7 +166,9 @@ function updateData({daysAgo, days}) {
 					unifiedData[id].isAmbassador = (id === island.ambassador[0]);
 					unifiedData[id].island = island;
 					unifiedData[id].islandIndex = index;
-					unifiedData[id].connections = undefined;
+					if (unifiedData[id].connections) {
+						unifiedData[id].clearConnectionCache();
+					}
 
 					// update the source data to have objects
 					// rather than arrays.
@@ -169,7 +185,7 @@ function updateData({daysAgo, days}) {
 		});
 }
 
-const daysBack = 35;
+const daysBack = DAYS_TO_GO_BACK;
 const stepSize = 1;
 const windowSize = 7;
 

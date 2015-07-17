@@ -8,15 +8,14 @@ body, html {
 }
 
 .modal {
-	padding: 1em;
-	box-shadow: 0 0 7em -1em black;
+	padding: 0.1em;
+	box-shadow: 0 0 2em -1em black;
 	background-color: white;
-	position: absolute;
+	position: fixed;
 	top: 0;
-	left: 50%;
-	transform: translateX(-50%);
-	margin-bottom: 4em;
+	left: 0;
 	z-index: 10;
+	border-radius: 0 0 0.3em 0;
 }
 
 .d3-svg {
@@ -110,6 +109,13 @@ body, html {
 	right: 0;
 	max-width: 18em;
 	z-index: 5;
+
+	.sappy-settings {
+		visibility: hidden;
+		&:hover {
+			visibility: visible;
+		}
+	}
 
 	.collapse-trigger {
 		cursor: pointer;

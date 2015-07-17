@@ -4,7 +4,8 @@
  */
 
 'use strict';
-const energy = 0.1;
+const ENERGY = 0.1;
+const NODE_ADD_PERIOD = 200;
 
 const settings = {
 	display: {
@@ -33,11 +34,11 @@ const settings = {
 			range: [0, 1]
 		},
 		proportionalToNumberOfNodes: {
-			value: 1,
+			value: 0,
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 4000,
+			value: 2300,
 			range: [50, 10000, 50]
 		}
 	},
@@ -52,7 +53,7 @@ const settings = {
 			range: [0, 1]
 		},
 		coefficient: {
-			value: 300,
+			value: 600,
 			range: [0, 400, 5]
 		},
 		affectedByCoocurence: {
@@ -87,6 +88,16 @@ const settings = {
 	},
 };
 
+
+/**
+ * This is what draws the graph using D3.
+ * 
+ * @param  {[type]} options.generator [Required] A generator which produces an iterator, the iterator should output {[Person]}
+ * @param  {Number} options.width     Width of the display port
+ * @param  {Number} options.height    Height of the display port
+ * @param  {String} options.place     Selector to determine where to place the D3 SVG in the body.
+ * @return {void}                   
+ */
 module.exports = function ({
 	generator,
 	width = 960,
@@ -96,7 +107,8 @@ module.exports = function ({
 
 
 	/**
-	 * Make the svg 10 times larger
+	 * Make the svg 10 times larger so that
+	 * we can zoom out by shrinking the svg.
 	 */
 
 	const screenWidth = width;
@@ -130,10 +142,11 @@ module.exports = function ({
 
 	const drag = force.drag();
 
+	window.force = force;
 
-	// Change the default energy value resume restores to.
+	// Change the default energy value resume restores the force system to.
 	force.oldResume = force.resume;
-	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(energy); };
+	force.resume = function (...args) {return force.oldResume.apply(force, args).alpha(ENERGY); };
 
 	const force2 = d3.layout
 		.force()
@@ -156,38 +169,19 @@ module.exports = function ({
 	 * Functions
 	 */
 
-	function autoZoom() {
-		let minX = 0;
-		let minY = 0;
-		let maxX = 0;
-		let maxY = 0;
-
-		force.nodes().forEach(n => {
-			if (n.x < minX) minX = n.x;
-			if (n.y < minY) minY = n.y;
-			if (n.x > maxX) maxX = n.x;
-			if (n.y > maxY) maxY = n.y;
-		});
-
-		// 0.1 seems to be arbritary scaling factor between
-		// d3 positions and the screen space.
-		setZoom(5 / Math.min((maxX - minX)/screenWidth, (maxY - minY)/screenHeight));
-	}
-
-	window.autoZoom = autoZoom;
-
 	function setZoom(zoom = 1) {
 		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
 	}
 
 	function updateDisplay() {
 		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
-		link.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
+		svg.selectAll('.link')
+			.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
 		svg.selectAll('.node-circle')
-			.attr('r', n => (Math.sqrt(n.numberOfOccurences) * 2 + 2) / (n.age === false ? 1 : n.age))
 			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
 			.style('stroke-width',n => n.highlight ? 5 : 3)
-			.style('fill', n => n.isRoot ? '#F64' : '#555');
+			.style('fill', n => n.isRoot ? '#F64' : '#555')
+			.transition().duration(200).attr("r", n => (Math.sqrt(n.numberOfOccurences) * 6 + 3) / (n.age === false ? 1 : n.age));
 		renderVisibleNames();
 	}
 
@@ -201,27 +195,28 @@ module.exports = function ({
 			return getNewData();
 		}
 
-		value.then(({nodes}) => updateData(nodes));
+		value.then(({nodes}) => processData(nodes));
 	}
 	window.getNewData = getNewData;
-	function updateData(newNodes) {
+
+	function processData(newNodes) {
 		buildUi(newNodes);
 
-		const forceLinks = force.links();
 		const forceNodes = force.nodes();
 
 		// create nodes for each of the labels
 		newNodes.forEach(n => {
 			if (!n.labelConfig) {
-				const source = {node: n};
-				const target = {node: n, hasLabel: true, label: n.label};
+				const source = {node: n, id: n.name + '_label_source'};
+				const target = {node: n, id: n.name + '_label_target', hasLabel: true, label: n.label};
 
 				n.labelConfig = {
 					source,
 					target,
 					link: {
 						weight: 1,
-						node: n
+						node: n,
+						id: source.node.name + '_' + target.node.name + '_label'
 					}
 				};
 			}
@@ -237,44 +232,41 @@ module.exports = function ({
 			n.age = 1;
 		});
 
-		const nodesToKeep = forceNodes.filter(n => {
+		// Iterate over each of the new nodes and make sure that any
+		// node that they are connected to is connected back.
+		forceNodes.forEach(n => {
+			n.isRoot = false;
+			n.connections.forEach(p => {
+				p.connections.add(n);
+				p.connectionWeights.set(n, n.connectionWeights.get(p));
+				p.normalizedConnectionWeights.set(n, n.connectionWeights.get(p));
+			});
+		});
+
+		// Iterate over each of the old nodes and make sure that any
+		// node that they are connected to is connected back.
+		newNodes.forEach(n => {
+			n.connections.forEach(p => {
+				p.connections.add(n);
+				p.connectionWeights.set(n, n.connectionWeights.get(p));
+				p.normalizedConnectionWeights.set(n, n.connectionWeights.get(p));
+			});
+		});
+
+
+		// Remove any nodes which have been around too long
+		forceNodes.forEach((n, i) => {
 
 			const tooOld = n.age > 3;
 			if (tooOld) {
 				n.age = false;
+				forceNodes.splice(i, 1);
 			}
 			return !tooOld;
 		});
-		forceNodes.splice(0);
-		forceNodes.push(...nodesToKeep);
 
-		// Remove all links
-		forceLinks.splice(0);
-
-		// Relink nodes
-		forceNodes.forEach((n, i) => {
-			n.isRoot = false;
-			n.getConnections(1).forEach(n2 => {
-
-				if (n === n2) return;
-
-				// don't link not added nodes yet
-				if (forceNodes.indexOf(n2) === -1) return;
-
-				const newLink = {
-					target: n2,
-					source: n,
-					weight: n.normalizedConnectionWeights.get(n2)
-				};
-
-				forceLinks.push(newLink);
-			});
-		});
-
+		// Give the most mentioned node special styling
 		newNodes[0].isRoot = true;
-
-		// Rerender
-		renderPoints();
 
 		let nodeBuffer = new Set();
 
@@ -282,7 +274,6 @@ module.exports = function ({
 		let nodesToRender = new Set(newNodes.filter(n => forceNodes.indexOf(n) === -1));
 
 		let i = (function *nextNodeToRender() {
-
 			while(nodeBuffer.size || nodesToRender.size) {
 				let n = (nodeBuffer.size ? nodeBuffer : nodesToRender).values().next().value;
 				nodeBuffer.delete(n);
@@ -304,7 +295,7 @@ module.exports = function ({
 				setTimeout(() => force.start().alpha(0.2), 500);
 
 				// start loading the next slice after a few seconds
-				setTimeout(getNewData, 3000);
+				setTimeout(getNewData, 2000);
 				return clearInterval(newItemInterval);
 			}
 
@@ -312,50 +303,35 @@ module.exports = function ({
 
 			// Check connections and either get them to be added next
 			// or connect them in the graph.
-			value.getConnections(1).forEach(n => {
+			value.connections.forEach(n => {
 				if (forceNodes.indexOf(n) === -1) {
 
 					// make sure it is in the chosen from the data
 					if (newNodes.indexOf(n) !== -1) {
 						nodeBuffer.add(n);
 					}
-				} else {
-
-					// Already on the diagram link them up
-					forceLinks.push({
-						target: forceNodes.indexOf(value),
-						source: forceNodes.indexOf(n),
-						weight: n.normalizedConnectionWeights.get(value)
-					});
 				}
 			});
+
 			renderPoints();
-		}, 100);
+			renderLinks();
+			force.start().alpha(ENERGY);
+			applySettings();
+		}, NODE_ADD_PERIOD);
 	}
 
 	function renderPoints() {
 
-		link = link.data(force.links());
-		link.enter()
-			.append('svg:line')
-			.attr('class', 'link')
-			.style('stroke', '#000')
-			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
-			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
-			.style('display', 'none')
-			.style('pointer-events', 'none')
-			.style('zIndex', -1);
-		link.exit().remove();
-
-		node = node.data(force.nodes());
+		node = node.data(force.nodes(), n => n.name);
 		node
 			.enter()
 			.append('svg:g')
 			.attr('class', 'node')
-			.style('zIndex', -1)
 			.append('svg:circle')
+			.attr("r", 0) 
 			.attr('class', 'node-circle')
 			.on('mouseenter', function (n) {
+				console.log(n.name, ':', Array.from(n.connections).map(n => n.name).join(', '));
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
 				n.drawLink = true;
@@ -375,13 +351,48 @@ module.exports = function ({
 		node.call(drag);
 
 		node.exit().remove();
-		force.start().alpha(energy);
+	}
 
-		// Aply the force diagram settingd
-		applySettings();
+	function renderLinks() {
+
+		const forceLinks = force.links();
+		const forceNodes = force.nodes();
+
+		// Remove all links
+		forceLinks.splice(0);
+
+		// Re-create links between nodes
+		forceNodes.forEach(n => {
+
+			forceNodes.forEach(n2 => {
+
+				// Create a new link
+				if (n.isConnectedTo(n2)) forceLinks.push({
+					target: n2,
+					source: n,
+					weight: n.normalizedConnectionWeights.get(n2),
+					id: n2.name + '_' + n.name 
+				});
+			});
+		});
+
+		link = link.data(force.links(), l => l.id);
+
+		link.enter()
+			.append('svg:line')
+			.attr('class', 'link')
+			.style('stroke', '#000')
+			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
+			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
+			.style('display', 'none')
+			.on('mouseenter', function (l) {
+				console.log(l.target.name, '<--->', l.source.name);
+			});
+		link.exit().remove();
 	}
 
 	function renderVisibleNames() {
+
 
 		const labelLinks = force2.links();
 		const labelNodes = force2.nodes();
@@ -391,7 +402,7 @@ module.exports = function ({
 		labelLinks.splice(0);
 		labelNodes.splice(0);
 
-		// Add new
+		// Add new links
 		nodes
 			.filter(n => n.drawName || n.alwaysDrawName || settings.display.showAllNames.value)
 			.forEach(n => {
@@ -402,7 +413,7 @@ module.exports = function ({
 				labelLinks.push(n.labelConfig.link);
 			});
 
-		labelLink = labelLink.data(force2.links());
+		labelLink = labelLink.data(force2.links(), l => l.id);
 		labelLink
 			.enter()
 			.append('svg:line')
@@ -410,11 +421,11 @@ module.exports = function ({
 
 		labelLink.exit().remove();
 
-		labelNode = labelNode.data(force2.nodes());
+		// Add new nodes
+		labelNode = labelNode.data(force2.nodes(), n => n.id);
 		const labelNodeGraphic = labelNode
 			.enter()
-			.append('svg:g')
-			.style('zIndex', 10);
+			.append('svg:g');
 
 		// Needed circle
 		labelNodeGraphic
@@ -472,7 +483,7 @@ module.exports = function ({
 			)
 			.linkStrength(l => settings.linkStrength.coefficient.value *
 				Math.pow(l.weight, settings.linkStrength.affectedByCoocurence.value)
-			).start().alpha(energy);
+			).start().alpha(ENERGY);
 	}
 
 	document.querySelector('.sappy-settings .o-techdocs-card__context')
@@ -543,7 +554,7 @@ module.exports = function ({
 	});
 
 	force2.on('tick', function() {
-		force2.alpha(energy);
+		force2.alpha(ENERGY);
 
 		labelNode.each(function(d, i) {
 			if(i % 2 === 0) {
