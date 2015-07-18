@@ -9,22 +9,15 @@ body, html {
 
 .modal {
 	position: fixed;
-	bottom: 77px;
+	bottom: 0;
 	left: 0;
 	top: auto;
 	width: 100%;
 	opacity: 0.5;
 	font-size: 12px;
-	text-align: right;
 	box-sizing: border-box;
 	padding: 3px 5px;
 	background-color: rgba(0, 0, 0, 0);
-}
-
-.d3-svg {
-	position: fixed;
-	top: 50%;
-	left: 50%;
 }
 
 .o-header__primary__right {
@@ -166,38 +159,51 @@ body, html {
 	}
 }
 
-.footer {
-	position: fixed;
-	bottom: 0;
-	left: 0;
+.graph-layout {
+	display: flex;
 	width: 100%;
+	overflow: hidden;
+}
+
+.graph-area {
+	overflow: hidden;
+	flex: 4 0 auto;
+}
+
+.information {
 	background: #333;
 	color: white;
 	padding: 10px;
 	display: flex;
 	align-items: center;
 	box-sizing: border-box;
+	flex-direction: column;
+	width: 30%;
 
 	* {
 		box-sizing: border-box;
 	}
 
+	.person-of-interest {
+		text-align: center;
+	}
+
 	.time {
 		font-size: 20px;
-		margin-right: 30px;
-		flex: 4 0 auto;
-		min-width: 350px;
+		text-align: center;
+		padding: 0.5em 0;
+		margin: 0.5em;
+		border: solid grey;
+		border-width: 4px 0;
 		time {
 			font-weight: bold;
 		}
 	}
 
 	h3 {
-		margin: 0 10px 0 0;
 		font-weight: normal;
 		font-size: 30px;
 		line-height: 1;
-		float: left;
 		color: #FFD3A2;
 	}
 
@@ -209,10 +215,33 @@ body, html {
 		overflow: hidden;
 	}
 
+	.topics {
+		flex: 1;
+		width: 100%;
+		margin-top: 0.5em;
+
+		ul {
+			list-style-type: none;
+			margin: 0;
+			padding: 0.5em;
+			margin-top: 0.5em;
+		}
+
+		li {
+			padding: 0.5em 0;
+			border: solid grey;
+			border-width: 0 0 1px 0;
+
+			&:first-child {
+				border-width: 1px 0;
+			}
+		}
+	}
+
 	.content {
-		flex: 1 1 auto;
+		flex: 0;
 		color: #ccc;
-		max-width: 750px;
+		align-self: flex-end;
 	}
 
 	.logo {

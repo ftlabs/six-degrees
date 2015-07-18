@@ -18,10 +18,6 @@ const settings = {
 			value: 1,
 			range: [0, 1]
 		},
-		"zoom (log scale)": {
-			value: 0,
-			range: [-3, 3, 0.1]
-		},
 		"Don't let rest": {
 			value: 0,
 			range: [0, 1]
@@ -105,17 +101,6 @@ module.exports = function ({
 	place = 'body'
 } = {}) {
 
-
-	/**
-	 * Make the svg 10 times larger so that
-	 * we can zoom out by shrinking the svg.
-	 */
-
-	const screenWidth = width;
-	const screenHeight = height;
-	width *= 10;
-	height *= 10;
-
 	/**
 	 * Variables
 	 */
@@ -169,12 +154,8 @@ module.exports = function ({
 	 * Functions
 	 */
 
-	function setZoom(zoom = 1) {
-		svg.style('transform', `translate(-50%, -50%) scale(${zoom})`);
-	}
 
 	function updateDisplay() {
-		setZoom(Math.pow(10, settings.display["zoom (log scale)"].value));
 		svg.selectAll('.link')
 			.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
 		svg.selectAll('.node-circle')

@@ -109,13 +109,12 @@ function getOrCreatePerson(options) {
 
 function fetchJSON(...urls) {
 
-	const modal = ui.modal('.o-techdocs-main', `Loading: ${urls.join(', ')}`);
-	console.log('Loading: ', urls);
+	const modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
+	console.log('Loading: ', urls.join(',\n'));
 	return Promise.all(urls.map(url => {
 		return fetch(url)
 			.then(response => response.text())
-			.then(string => JSON.parse(string))
-		;
+			.then(string => JSON.parse(string));
 	})).then(results => {
 
 		modal.remove();
@@ -133,23 +132,32 @@ function getConnectionsForPeople(peopleArray) {
 
 function updateData({daysAgo, days}) {
 	return (
-			daysAgo && days ?
-			fetchJSON('https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=-${daysAgo},${days}`) :
-			fetchJSON('https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_islands_of/people/with_connectivity')
+			fetchJSON(
+				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}`,
+				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}`
+			)
 		 )
-		.then(function([islandsJSON]) {
+		.then(function([islandsJSON, topicsJson]) {
 
-			let peopleList = [];
+			const peopleList = [];
 			islandsJSON.islands.forEach(function (island) {
 				peopleList.push(...island.islanders.map(islanders => islanders[0]));
 			});
 
+			const topics = topicsJson
+						.metadatums_freq_by_type_by_type
+						.primaryTheme
+						.topics
+						.slice(0,5)
+						.map(topic => topic[0].slice(7));
+
 			return [
 				peopleList,
-				islandsJSON
+				islandsJSON,
+				topics
 			];
 		})
-		.then(function ([people, islandsJSON]) {
+		.then(function ([people, islandsJSON, topics]) {
 
 			people.map(function (p) {
 				unifiedData[p] = unifiedData[p] || {
@@ -179,9 +187,9 @@ function updateData({daysAgo, days}) {
 				});
 			});
 
-			return islandsJSON.islands[0].islanders.slice(0, MAX_NUMBER_OF_NODES);
+			return [islandsJSON.islands[0].islanders.slice(0, MAX_NUMBER_OF_NODES), topics];
 		})
-		.then(getConnectionsForPeople)
+		.then(([people, topics]) => ({nodes: getConnectionsForPeople(people), topics}))
 		.catch(function (e) {
 			ui.modal('.o-techdocs-main', `Error: ${e.message}`);
 			throw e;
@@ -195,24 +203,47 @@ const windowSize = 7;
 const configs = [];
 const dataCache = new Map();
 
+const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function stringifyDateNumber(n) {
+	const nString = String(n);
+	if (nString.length === 1) return "0" + nString;
+	return nString;
+}
+
 for (let i=0; i < daysBack - windowSize; i+=stepSize) {
-	configs.push({
-		daysAgo: daysBack - i,
-		days: windowSize
-	});
+	const date = new Date(Date.now() - 3600 * 24 * 1000 * (daysBack - i));
+
+	let config = {
+		days: windowSize,
+		date: {
+			dayOfWeek: days[date.getDay()],
+			date: stringifyDateNumber(date.getDate()),
+			monthName: months[date.getMonth()],
+			month: stringifyDateNumber(date.getMonth() + 1),
+			year: String(date.getFullYear())
+		}
+	};
+
+	config.date.apiFormat = `${config.date.year}-${config.date.month}-${config.date.date}`;
+	config.daysAgo = config.date.apiFormat;
+
+	configs.push(config);
+}
+
+function renderTopics(topicList) {
+	document.querySelector('.topics_topic-list').innerHTML = topicList.map(topic => `<li>${topic}</li>`).join('\n');
 }
 
 module.exports.generator = function *dataGenerator() {
-	const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-	const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 	for (let config of configs) {
-		let date = new Date(Date.now() - 3600 * 24 * 1000 * config.daysAgo);
 
-		document.querySelector(".date-target .dow").innerHTML = days[date.getDay()];
-		document.querySelector(".date-target .dom").innerHTML = date.getDate();
-		document.querySelector(".date-target .month").innerHTML = months[date.getMonth()];
-		document.querySelector(".date-target .year").innerHTML = date.getFullYear();
+		document.querySelector(".date-target .dow").innerHTML = config.date.dayOfWeek;
+		document.querySelector(".date-target .dom").innerHTML = config.date.date;
+		document.querySelector(".date-target .month").innerHTML = config.date.monthName;
+		document.querySelector(".date-target .year").innerHTML = config.date.year;
 
 		// Refresh the page on a new day.
 		if ((new Date()).getDate() !== currentDate) {
@@ -221,11 +252,15 @@ module.exports.generator = function *dataGenerator() {
 		}
 
 		if (dataCache.has(config)) {
-			yield dataCache.get(config);
+			renderTopics(dataCache.get(config).topics);
+			yield Promise.resolve(dataCache.get(config).nodes);
 		} else {
-			const data = updateData(config);
-			dataCache.set(config, data);
-			yield data;
+			yield updateData(config)
+			.then(({topics, nodes}) => {
+				dataCache.set(config, {topics, nodes});
+				renderTopics(topics);
+				return nodes;
+			});
 		}
 	}
 };
