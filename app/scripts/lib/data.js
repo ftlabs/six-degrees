@@ -292,8 +292,6 @@ module.exports.generator = function *dataGenerator() {
 			break;
 		}
 
-		if (i++ > 5) return;
-
 		yield updateData(config)
 			.then(({topics, nodes}) => {
 				renderTopics(topics);
