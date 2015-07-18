@@ -245,8 +245,29 @@ for (let i=0; i < daysBack - windowSize; i+=stepSize) {
 	configs.push(config);
 }
 
+const topicQueue = [];
+setInterval(function() {
+	if (!topicQueue.length) return;
+	let item = topicQueue.shift();
+	item[0].classList[item[1]]('visible');
+}, 100);
 function renderTopics(topicList) {
-	document.querySelector('.topics_topic-list').innerHTML = topicList.map(topic => `<li>${topic}</li>`).join('\n');
+	let listEl = document.querySelector('.topics_topic-list');
+	topicList.forEach(topic => {
+		let el = document.getElementById('topic-'+topic);
+		if (!el) {
+			el = document.createElement('li');
+			el.id = 'topic-'+topic;
+			el.innerHTML = "<div>"+topic+"</div>";
+			listEl.appendChild(el);
+		}
+		topicQueue.push([el, 'add']);
+	});
+	Array.from(document.querySelectorAll('.topics_topic-list li')).forEach(el => {
+		if (topicList.indexOf(el.querySelector('div').innerHTML) === -1) {
+			topicQueue.push([el, 'remove']);
+		}
+	});
 }
 
 module.exports.generator = function *dataGenerator() {
