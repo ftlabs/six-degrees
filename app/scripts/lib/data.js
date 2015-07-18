@@ -19,6 +19,9 @@ const TIME_DATA_COLLECTED_FROM = 1413649806047;
 const DAYS_TO_GO_BACK = Math.floor((Date.now() - TIME_DATA_COLLECTED_FROM)/(24*3600*1000));
 const currentDate = (new Date()).getDate();
 
+const TOPIC_MIN_RELEVANCE = 0.6;
+const TOPIC_MAX_COUNT = 5;
+
 let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
 
 if (personSearch && personSearch[1]) {
@@ -145,11 +148,21 @@ function updateData({daysAgo, days}) {
 			});
 
 			const topics = topicsJson
-						.metadatums_freq_by_type_by_type
-						.primaryTheme
-						.topics
-						.slice(0,5)
-						.map(topic => topic[0].slice(7));
+
+				// Find topic list in returned data
+				.metadatums_freq_by_type_by_type.primaryTheme.topics
+
+				// Reduce to only significant topics
+				.reduce((acc, topic) => {
+					if (!acc.length || ((acc[0][1] * TOPIC_MIN_RELEVANCE) < topic[1]) && acc.length < TOPIC_MAX_COUNT) {
+						acc.push(topic);
+					}
+					return acc;
+				}, [])
+
+				// Remove topics: prefix
+				.map(topic => topic[0].slice(7))
+			;
 
 			return [
 				peopleList,
@@ -232,8 +245,29 @@ for (let i=0; i < daysBack - windowSize; i+=stepSize) {
 	configs.push(config);
 }
 
+const topicQueue = [];
+setInterval(function() {
+	if (!topicQueue.length) return;
+	let item = topicQueue.shift();
+	item[0].classList[item[1]]('visible');
+}, 100);
 function renderTopics(topicList) {
-	document.querySelector('.topics_topic-list').innerHTML = topicList.map(topic => `<li>${topic}</li>`).join('\n');
+	let listEl = document.querySelector('.topics_topic-list');
+	topicList.forEach(topic => {
+		let el = document.getElementById('topic-'+topic);
+		if (!el) {
+			el = document.createElement('li');
+			el.id = 'topic-'+topic;
+			el.innerHTML = "<div>"+topic+"</div>";
+			listEl.appendChild(el);
+		}
+		topicQueue.push([el, 'add']);
+	});
+	Array.from(document.querySelectorAll('.topics_topic-list li')).forEach(el => {
+		if (topicList.indexOf(el.querySelector('div').innerHTML) === -1) {
+			topicQueue.push([el, 'remove']);
+		}
+	});
 }
 
 module.exports.generator = function *dataGenerator() {
