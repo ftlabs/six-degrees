@@ -110,16 +110,22 @@ function getOrCreatePerson(options) {
 	return np;
 }
 
+const responseCache = new Map();
 function fetchJSON(...urls) {
 
 	const modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
 	console.log('Loading: ', urls.join(',\n'));
 	return Promise.all(urls.map(url => {
-		return fetch(url)
-			.then(response => response.text())
-			.then(string => JSON.parse(string));
-	})).then(results => {
 
+		// Fetch and cache response
+		return (responseCache.has(url) ? 
+			Promise.resolve(responseCache.get(url)) :
+			fetch(url)
+				.then(response => (responseCache.set(url, response.clone()), response))
+		)
+		.then(response => response.text())
+		.then(string => JSON.parse(string));
+	})).then(results => {
 		modal.remove();
 		return results;
 	});
@@ -214,7 +220,6 @@ const stepSize = 1;
 const windowSize = 7;
 
 const configs = [];
-const dataCache = new Map();
 
 const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -272,6 +277,8 @@ function renderTopics(topicList) {
 
 module.exports.generator = function *dataGenerator() {
 
+	let i = 0;
+
 	for (let config of configs) {
 
 		document.querySelector(".date-target .dow").innerHTML = config.date.dayOfWeek;
@@ -285,16 +292,12 @@ module.exports.generator = function *dataGenerator() {
 			break;
 		}
 
-		if (dataCache.has(config)) {
-			renderTopics(dataCache.get(config).topics);
-			yield Promise.resolve(dataCache.get(config).nodes);
-		} else {
-			yield updateData(config)
+		if (i++ > 5) return;
+
+		yield updateData(config)
 			.then(({topics, nodes}) => {
-				dataCache.set(config, {topics, nodes});
 				renderTopics(topics);
 				return nodes;
 			});
-		}
 	}
 };
