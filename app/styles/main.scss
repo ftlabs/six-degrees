@@ -173,12 +173,13 @@ body, html {
 .information {
 	background: #333;
 	color: white;
-	padding: 10px;
+	padding: 15px;
 	display: flex;
 	align-items: center;
 	box-sizing: border-box;
 	flex-direction: column;
 	width: 30%;
+	max-width: 350px;
 
 	* {
 		box-sizing: border-box;
@@ -194,9 +195,14 @@ body, html {
 		padding: 0.5em 0;
 		margin: 0.5em;
 		border: solid grey;
-		border-width: 4px 0;
+		border-width: 2px 0;
 		time {
 			font-weight: bold;
+		}
+		.dow {
+			display: block;
+			font-weight: normal;
+			font-size: 30px;
 		}
 	}
 
@@ -223,18 +229,17 @@ body, html {
 		ul {
 			list-style-type: none;
 			margin: 0;
-			padding: 0.5em;
+			padding: 0;
 			margin-top: 0.5em;
 		}
 
 		li {
-			padding: 0.5em 0;
-			border: solid grey;
-			border-width: 0 0 1px 0;
-
-			&:first-child {
-				border-width: 1px 0;
-			}
+			padding: 0.5em;
+			margin-bottom: 3px;
+			background-color: #FFDDB9;
+			color: black;
+			text-transform: uppercase;
+			font-size: 15px;
 		}
 	}
 
@@ -257,13 +262,6 @@ body, html {
 	.logo img {
 		width:  100%;
 		padding: 8px;
-	}
-
-	time .dow {
-	}
-
-	time span {
-		line-height: 1;
 	}
 
 	.brand {
