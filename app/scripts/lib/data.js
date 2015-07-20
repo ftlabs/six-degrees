@@ -120,10 +120,8 @@ function fetchJSON(...urls) {
 		// Fetch and cache response
 		return (responseCache.has(url) ? 
 			Promise.resolve(responseCache.get(url)) :
-			fetch(url)
-				.then(response => (responseCache.set(url, response), response))
+			fetch(url).then(response => responseCache.set(url, response.text()).get(url))
 		)
-		.then(response => response.text())
 		.then(string => JSON.parse(string));
 	})).then(results => {
 		modal.remove();
@@ -276,8 +274,6 @@ function renderTopics(topicList) {
 }
 
 module.exports.generator = function *dataGenerator() {
-
-	let i = 0;
 
 	for (let config of configs) {
 
