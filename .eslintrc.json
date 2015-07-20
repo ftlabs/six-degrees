@@ -10,6 +10,10 @@
 	"unused": "vars",
 	"strict": true,
 	"trailing": true,
+	"quotes": false,
+	"curly": false,
+	"space-infix-ops": false,
+	"no-use-before-define": false,
 
 	"esnext": true,
 	"expr": true,

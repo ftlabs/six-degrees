@@ -15,18 +15,28 @@ const populus = [];
 
 const MAX_NUMBER_OF_NODES = 10;
 
-const TIME_DATA_COLLECTED_FROM = 1413649806047;
-const DAYS_TO_GO_BACK = Math.floor((Date.now() - TIME_DATA_COLLECTED_FROM)/(24*3600*1000));
-const currentDate = (new Date()).getDate();
-
 const TOPIC_MIN_RELEVANCE = 0.6;
 const TOPIC_MAX_COUNT = 5;
 
-let personSearch = location.search.match(/\?people=([a-zA-Z+]+)/);
+const TIME_DATA_COLLECTED_FROM = 1413649806047;
 
-if (personSearch && personSearch[1]) {
-	personSearch = personSearch[1].replace(/\+/g, ' ');
+let dateFrom;
+let dateTo;
+let dateFromTo = location.search.match(/^\?daysFrom=(\d{4})-(\d{2})-(\d{2})(&daysTo=(\d{4})-(\d{2})-(\d{2}))?/);
+if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
+	dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
+	if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
+		dateTo = new Date(dateFromTo[5], Number(dateFromTo[6]) - 1, dateFromTo[7]).getTime();
+	}
 }
+
+let daysBack = location.search.match(/^\?daysBack=(\d+)/);
+if (daysBack && daysBack[1]) {
+	daysBack = daysBack[1];
+}
+
+daysBack = daysBack || Math.floor((Date.now() - (dateFrom || TIME_DATA_COLLECTED_FROM)) / (24 * 3600 * 1000));
+const currentDate = (new Date()).getDate();
 
 class Person {
 	constructor(personData) {
@@ -118,7 +128,7 @@ function fetchJSON(...urls) {
 	return Promise.all(urls.map(url => {
 
 		// Fetch and cache response
-		return (responseCache.has(url) ? 
+		return (responseCache.has(url) ?
 			Promise.resolve(responseCache.get(url)) :
 			fetch(url).then(response => responseCache.set(url, response.text()).get(url))
 		)
@@ -143,7 +153,7 @@ function updateData({daysAgo, days}) {
 				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}`,
 				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}`
 			)
-		 )
+		)
 		.then(function([islandsJSON, topicsJson]) {
 
 			const peopleList = [];
@@ -213,14 +223,13 @@ function updateData({daysAgo, days}) {
 		});
 }
 
-const daysBack = DAYS_TO_GO_BACK;
 const stepSize = 1;
 const windowSize = 7;
 
 const configs = [];
 
-const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const daysOfTheWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const namesOfTheMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function stringifyDateNumber(n) {
 	const nString = String(n);
@@ -234,9 +243,9 @@ for (let i=0; i < daysBack - windowSize; i+=stepSize) {
 	let config = {
 		days: windowSize,
 		date: {
-			dayOfWeek: days[date.getDay()],
+			dayOfWeek: daysOfTheWeek[date.getDay()],
 			date: stringifyDateNumber(date.getDate()),
-			monthName: months[date.getMonth()],
+			monthName: namesOfTheMonths[date.getMonth()],
 			month: stringifyDateNumber(date.getMonth() + 1),
 			year: String(date.getFullYear())
 		}
@@ -257,7 +266,7 @@ setInterval(function() {
 function renderTopics(topicList) {
 	let listEl = document.querySelector('.topics_topic-list');
 	topicList.forEach(topic => {
-		let el = document.getElementById('topic-'+topic);
+		let el = document.getElementById('topic-' + topic);
 		if (!el) {
 			el = document.createElement('li');
 			el.id = 'topic-'+topic;
@@ -286,6 +295,10 @@ module.exports.generator = function *dataGenerator() {
 		if ((new Date()).getDate() !== currentDate) {
 			location.reload();
 			break;
+		}
+
+		if (new Date(config.date.year, Number(config.date.month) - 1, config.date.date).getTime() > dateTo) {
+			return;
 		}
 
 		yield updateData(config)
