@@ -172,6 +172,7 @@ module.exports = function ({
 
 		const {value, done} = iterator.next();
 		if (done) {
+			clearData();
 			iterator = generator();
 			return getNewData();
 		}
@@ -179,6 +180,16 @@ module.exports = function ({
 		value.then(({nodes}) => processData(nodes));
 	}
 	window.getNewData = getNewData;
+
+	function clearData() {
+		const forceNodes = force.nodes();
+		forceNodes.forEach(n => {
+			n.age = undefined;
+		});
+		forceNodes.splice(0);
+		renderPoints();
+		renderLinks();
+	}
 
 	function processData(newNodes) {
 		buildUi(newNodes);

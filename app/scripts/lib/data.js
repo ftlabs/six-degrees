@@ -20,9 +20,11 @@ const TOPIC_MAX_COUNT = 5;
 
 const TIME_DATA_COLLECTED_FROM = 1413649806047;
 
+const currentDate = (new Date()).getDate();
+
 let dateFrom;
 let dateTo;
-let dateFromTo = location.search.match(/^\?daysFrom=(\d{4})-(\d{2})-(\d{2})(&daysTo=(\d{4})-(\d{2})-(\d{2}))?/);
+let dateFromTo = location.search.match(/^\?dateFrom=(\d{4})-(\d{2})-(\d{2})(&dateTo=(\d{4})-(\d{2})-(\d{2}))?/);
 if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
 	dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
 	if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
@@ -30,13 +32,14 @@ if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
 	}
 }
 
+console.log(dateFrom);
+
 let daysBack = location.search.match(/^\?daysBack=(\d+)/);
 if (daysBack && daysBack[1]) {
-	daysBack = daysBack[1];
+	daysBack = Number(daysBack[1]);
 }
 
 daysBack = daysBack || Math.floor((Date.now() - (dateFrom || TIME_DATA_COLLECTED_FROM)) / (24 * 3600 * 1000));
-const currentDate = (new Date()).getDate();
 
 class Person {
 	constructor(personData) {
@@ -237,7 +240,7 @@ function stringifyDateNumber(n) {
 	return nString;
 }
 
-for (let i=0; i < daysBack - windowSize; i+=stepSize) {
+for (let i=0; i <= daysBack - windowSize; i+=stepSize) {
 	const date = new Date(Date.now() - 3600 * 24 * 1000 * (daysBack - i));
 
 	let config = {
@@ -250,12 +253,18 @@ for (let i=0; i < daysBack - windowSize; i+=stepSize) {
 			year: String(date.getFullYear())
 		}
 	};
-
 	config.date.apiFormat = `${config.date.year}-${config.date.month}-${config.date.date}`;
 	config.daysAgo = config.date.apiFormat;
 
 	configs.push(config);
+
+	// Stop if there is an endpoint set.
+	if (date.getTime() > dateTo) {
+		break;
+	}
 }
+
+if (!configs.length) throw Error('No Dates Selected');
 
 const topicQueue = [];
 setInterval(function() {
@@ -263,6 +272,7 @@ setInterval(function() {
 	let item = topicQueue.shift();
 	item[0].classList[item[1]]('visible');
 }, 100);
+
 function renderTopics(topicList) {
 	let listEl = document.querySelector('.topics_topic-list');
 	topicList.forEach(topic => {
@@ -295,10 +305,6 @@ module.exports.generator = function *dataGenerator() {
 		if ((new Date()).getDate() !== currentDate) {
 			location.reload();
 			break;
-		}
-
-		if (new Date(config.date.year, Number(config.date.month) - 1, config.date.date).getTime() > dateTo) {
-			return;
 		}
 
 		yield updateData(config)
