@@ -121,7 +121,7 @@ function fetchJSON(...urls) {
 		return (responseCache.has(url) ? 
 			Promise.resolve(responseCache.get(url)) :
 			fetch(url)
-				.then(response => (responseCache.set(url, response.clone()), response))
+				.then(response => (responseCache.set(url, response), response))
 		)
 		.then(response => response.text())
 		.then(string => JSON.parse(string));
