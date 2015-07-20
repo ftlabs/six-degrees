@@ -6,6 +6,7 @@
 'use strict';
 const ENERGY = 0.1;
 const NODE_ADD_PERIOD = 200;
+const renderInformationUI = !!document.querySelector('.information');
 
 const settings = {
 	display: {
@@ -488,7 +489,7 @@ module.exports = function ({
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
 
-		document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
+		if (renderInformationUI) document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
 
 		let slidersHTML = "";
 

@@ -123,15 +123,20 @@ function getOrCreatePerson(options) {
 
 const responseCache = new Map();
 function fetchJSON(...urls) {
+	let modal;
 
-	const modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
-	console.log('Loading: ', urls.join(',\n'));
 	return Promise.all(urls.map(url => {
 
 		// Fetch and cache response
-		return (responseCache.has(url) ?
-			Promise.resolve(responseCache.get(url)) :
-			fetch(url)
+		if (responseCache.has(url)) {
+			return Promise.resolve(responseCache.get(url))
+				.then(string => JSON.parse(string));
+		} else {
+
+			modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
+			console.log('Loading: ', urls.join(',\n'));
+
+			return fetch(url)
 				.then(response => response.text())
 				.then(string => {
 
@@ -139,9 +144,11 @@ function fetchJSON(...urls) {
 					responseCache.set(url, string);
 					return string;
 				})
-		).then(string => JSON.parse(string));
-	})).then(results => {
-		modal.remove();
+				.then(string => JSON.parse(string));
+		}
+	}))
+	.then(results => {
+		if (modal) modal.remove();
 		return results;
 	});
 }
@@ -163,6 +170,15 @@ function printCache() {
     downloadLink.click();
     document.body.removeChild(downloadLink);
 }
+
+function populateCache(urlToString) {
+	for (let url in urlToString) {
+		if (urlToString.hasOwnProperty(url)) {
+			responseCache.set(url, urlToString[url]);
+		}
+	}
+}
+window.populateCache = populateCache;
 window.printCache = printCache;
 
 function getConnectionsForPeople(peopleArray) {
@@ -296,6 +312,8 @@ setInterval(function() {
 	item[0].classList[item[1]]('visible');
 }, 100);
 
+const renderInformationUI = !!document.querySelector('.information');
+
 function renderTopics(topicList) {
 	let listEl = document.querySelector('.topics_topic-list');
 	topicList.forEach(topic => {
@@ -319,10 +337,12 @@ module.exports.generator = function *dataGenerator() {
 
 	for (let config of configs) {
 
-		document.querySelector(".date-target .dow").innerHTML = config.date.dayOfWeek;
-		document.querySelector(".date-target .dom").innerHTML = config.date.date;
-		document.querySelector(".date-target .month").innerHTML = config.date.monthName;
-		document.querySelector(".date-target .year").innerHTML = config.date.year;
+		if (renderInformationUI) {
+			document.querySelector(".date-target .dow").innerHTML = config.date.dayOfWeek;
+			document.querySelector(".date-target .dom").innerHTML = config.date.date;
+			document.querySelector(".date-target .month").innerHTML = config.date.monthName;
+			document.querySelector(".date-target .year").innerHTML = config.date.year;
+		}
 
 		// Refresh the page on a new day.
 		if ((new Date()).getDate() !== currentDate) {
@@ -332,7 +352,9 @@ module.exports.generator = function *dataGenerator() {
 
 		yield updateData(config)
 			.then(({topics, nodes}) => {
-				renderTopics(topics);
+				if (renderInformationUI) {
+					renderTopics(topics);
+				}
 				return nodes;
 			});
 	}

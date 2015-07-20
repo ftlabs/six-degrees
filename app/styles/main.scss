@@ -170,6 +170,17 @@ body, html {
 	flex: 4 0 auto;
 }
 
+.four-oh-four .sorry-hero {
+	position: absolute;
+	padding: 1em;
+	top: 20%;
+	background-color: rgba(255,255,255,0.5);
+}
+
+.core .needs-cut-mustard {
+	display: none;
+}
+
 .information {
 	background: #333;
 	color: white;
