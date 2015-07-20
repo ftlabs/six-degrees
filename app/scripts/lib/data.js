@@ -32,8 +32,6 @@ if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
 	}
 }
 
-console.log(dateFrom);
-
 let daysBack = location.search.match(/^\?daysBack=(\d+)/);
 if (daysBack && daysBack[1]) {
 	daysBack = Number(daysBack[1]);
