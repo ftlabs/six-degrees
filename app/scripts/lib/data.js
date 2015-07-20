@@ -131,14 +131,39 @@ function fetchJSON(...urls) {
 		// Fetch and cache response
 		return (responseCache.has(url) ?
 			Promise.resolve(responseCache.get(url)) :
-			fetch(url).then(response => responseCache.set(url, response.text()).get(url))
-		)
-		.then(string => JSON.parse(string));
+			fetch(url)
+				.then(response => response.text())
+				.then(string => {
+
+					// cache response body string
+					responseCache.set(url, string);
+					return string;
+				})
+		).then(string => JSON.parse(string));
 	})).then(results => {
 		modal.remove();
 		return results;
 	});
 }
+
+function printCache() {
+
+	const output = {};
+	Array.from(responseCache.keys()).forEach(i => {
+		output[i] = responseCache.get(i);
+	});
+
+    var downloadLink = document.createElement("a");
+    var blob = new Blob(["\ufeff", JSON.stringify(output)]);
+    var url = URL.createObjectURL(blob);
+    downloadLink.href = url;
+    downloadLink.download = "cache.json";
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+window.printCache = printCache;
 
 function getConnectionsForPeople(peopleArray) {
 
