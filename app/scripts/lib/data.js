@@ -117,7 +117,8 @@ function getOrCreatePerson(options) {
 
 const responseCache = new Map();
 function fetchJSON(options, ...urls) {
-	let modal;
+	let modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
+	console.log('Loading: ', urls.join(',\n'));
 
 	if (typeof options === 'string') {
 		urls.unshift(options);
@@ -134,9 +135,6 @@ function fetchJSON(options, ...urls) {
 			if (options.forceCache) {
 				throw Error('Will not fetch fresh');
 			}
-
-			modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
-			console.log('Loading: ', urls.join(',\n'));
 
 			return fetch(url)
 				.then(response => response.text())
@@ -355,7 +353,7 @@ module.exports.init = function({daysBack, dateTo, dateFrom} = {}) {
 module.exports.populateCache = populateCache;
 module.exports.printCache = printCache;
 
-module.exports.generator = function *dataGenerator({fetchMissingData = true}) {
+module.exports.generator = function *dataGenerator({fetchMissingData = true} = {}) {
 
 	for (let config of configs) {
 
