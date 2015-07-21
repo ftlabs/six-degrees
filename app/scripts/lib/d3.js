@@ -351,6 +351,18 @@ module.exports = function ({
 				n.getConnections().forEach(p => p.drawName = false);
 				n.getConnections().forEach(p => p.drawLink = false);
 				updateDisplay();
+			})
+			.on('mousedown', function (n) {
+				n.clickImminent = true;
+				setTimeout(function () {
+					n.clickImminent = false;
+				}, 200);
+			})
+			.on('mouseup', function (n) {
+				if (n.clickImminent) {
+					console.log(n.id);
+					location.assign('http://search.ft.com/search?f=' + encodeURIComponent(`people["${n.name.replace(/ /g, '+')}"]`));
+				}
 			});
 
 		node.call(drag);
@@ -389,10 +401,7 @@ module.exports = function ({
 			.style('stroke', '#000')
 			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
-			.style('display', 'none')
-			.on('mouseenter', function (l) {
-				console.log(l.target.name, '<--->', l.source.name);
-			});
+			.style('display', 'none');
 		link.exit().remove();
 	}
 

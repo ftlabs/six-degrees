@@ -49,6 +49,10 @@ body, html {
 	font-family: BentonSans, helvetica, sans;
 }
 
+.node-circle {
+	cursor: pointer;
+}
+
 .erdos {
 	#erdos-form {
 		margin-bottom: 40px;
@@ -178,10 +182,7 @@ body, html {
 
 	.hide-overlay {
 		float: right;
-		padding: 0.2em 0.4em;
-		border: 1px solid black;
 		margin: 0.2em;
-		cursor: pointer;
 	}
 
 	&.hidden {
