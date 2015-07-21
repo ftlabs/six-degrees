@@ -29,11 +29,15 @@ Promise.all([
 	fetch('./caches/2015-05-01-2015-05-10.json')
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
-		.then(json => data.populateCache(json))
-		.then(() => {
+		.then(json => (data.populateCache(json.cachedResponses), json))
+		.then(json => {
+
+				// fetch dateFrom and dateTo information from the cache file
+				let {dateFrom, dateTo} = json;
+
 				const dateRange = {
-					dateFrom: "2015-05-01",
-					dateTo: "2015-05-10"
+					dateFrom,
+					dateTo
 				};
 
 				data.init(dateRange);

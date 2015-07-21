@@ -117,10 +117,16 @@ function getOrCreatePerson(options) {
 
 const responseCache = new Map();
 function fetchJSON(options, ...urls) {
-	let modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
+
+	let modal;
 
 	if (typeof options === 'string') {
 		urls.unshift(options);
+	}
+
+	// If not all of the responses are cached then show the overlay
+	if (urls.map(url => responseCache.has(url)).indexOf(false) !== -1) {
+		modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
 	}
 
 	return Promise.all(urls.map(url => {
@@ -175,7 +181,7 @@ function printCache({dateFrom, dateTo}) {
 	var blob = new Blob(["\ufeff", JSON.stringify({
 		dateFrom,
 		dateTo,
-		cacheContent: output
+		cachedResponses: output
 	})]);
 	var url = URL.createObjectURL(blob);
 	downloadLink.href = url;
