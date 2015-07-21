@@ -174,7 +174,20 @@ body, html {
 	position: absolute;
 	padding: 1em;
 	top: 20%;
-	background-color: rgba(255,255,255,0.5);
+	background-color: rgba(255,255,255,0.9);
+
+	.hide-overlay {
+		float: right;
+		padding: 0.2em 0.4em;
+		border: 1px solid black;
+		margin: 0.2em;
+		cursor: pointer;
+	}
+
+	&.hidden {
+		transition: transform ease 500ms;
+		transform: translateY(-100%);
+	}
 }
 
 .core .needs-cut-mustard {

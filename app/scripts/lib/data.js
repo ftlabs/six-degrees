@@ -7,7 +7,6 @@
 // pick one
 // fetch their coocurring people
 // then fetch theirs
-const pako = require('pako');
 const ui = require('./ui');
 
 const unifiedData = {};
@@ -50,7 +49,7 @@ class Person {
 
 		//unpack island
 		if (typeof this.island.connections.unpacked === 'undefined') {
-			this.island.connections.unpacked = JSON.parse(pako.inflate(atob(this.island.connections.json_zlib_base64), {to: 'string'}));
+			this.island.connections.unpacked = this.island.connections.uncompressed;
 		}
 	}
 
@@ -194,8 +193,8 @@ function updateData({daysAgo, days}, fetchMissing = true) {
 	return (
 			fetchJSON(
 				{forceCache: !fetchMissing},
-				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}`,
-				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}`
+				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}&uncompressed=true`,
+				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}&uncompressed=true`
 			)
 		)
 		.then(function([islandsJSON, topicsJson]) {

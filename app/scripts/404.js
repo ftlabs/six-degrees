@@ -20,6 +20,11 @@ Promise.all([
 	addScript('https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js'),
 	addScript('https://polyfill.webservices.ft.com/v1/polyfill.min.js?features=fetch,default')
 ]).then(() => {
+
+	document.querySelector('.sorry-hero .hide-overlay').addEventListener('click', function () {
+		document.querySelector('.sorry-hero').classList.add('hidden');
+	});
+
 	// wait about 20s then fetch the whole cache. ~3MB
 	setTimeout(function () {
 		fetch('./scripts/caches/everything.json')
@@ -40,7 +45,7 @@ Promise.all([
 					place: '.graph-area',
 					width: document.querySelector('.graph-area').clientWidth,
 					height: document.querySelector('body').clientHeight,
-					fetchMissingData: false
+					// fetchMissingData: false
 				});
 		});
 
