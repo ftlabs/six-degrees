@@ -22,22 +22,17 @@ const TIME_DATA_COLLECTED_FROM = 1413649806047;
 
 const currentDate = (new Date()).getDate();
 
-let dateFrom;
-let dateTo;
-let dateFromTo = location.search.match(/^\?dateFrom=(\d{4})-(\d{2})-(\d{2})(&dateTo=(\d{4})-(\d{2})-(\d{2}))?/);
-if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
-	dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
-	if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
-		dateTo = new Date(dateFromTo[5], Number(dateFromTo[6]) - 1, dateFromTo[7]).getTime();
-	}
-}
+const stepSize = 1;
+const windowSize = 7;
 
-let daysBack = location.search.match(/^\?daysBack=(\d+)/);
-if (daysBack && daysBack[1]) {
-	daysBack = Number(daysBack[1]);
-}
+const configs = [];
 
-daysBack = daysBack || Math.floor((Date.now() - (dateFrom || TIME_DATA_COLLECTED_FROM)) / (24 * 3600 * 1000));
+const daysOfTheWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const namesOfTheMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const topicQueue = [];
+
+const renderInformationUI = !!document.querySelector('.information');
 
 class Person {
 	constructor(personData) {
@@ -122,8 +117,12 @@ function getOrCreatePerson(options) {
 }
 
 const responseCache = new Map();
-function fetchJSON(...urls) {
+function fetchJSON(options, ...urls) {
 	let modal;
+
+	if (typeof options === 'string') {
+		urls.unshift(options);
+	}
 
 	return Promise.all(urls.map(url => {
 
@@ -132,6 +131,10 @@ function fetchJSON(...urls) {
 			return Promise.resolve(responseCache.get(url))
 				.then(string => JSON.parse(string));
 		} else {
+
+			if (options.forceCache) {
+				throw Error('Will not fetch fresh');
+			}
 
 			modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
 			console.log('Loading: ', urls.join(',\n'));
@@ -178,8 +181,6 @@ function populateCache(urlToString) {
 		}
 	}
 }
-window.populateCache = populateCache;
-window.printCache = printCache;
 
 function getConnectionsForPeople(peopleArray) {
 
@@ -189,9 +190,10 @@ function getConnectionsForPeople(peopleArray) {
 	return {nodes: peopleArray};
 }
 
-function updateData({daysAgo, days}) {
+function updateData({daysAgo, days}, fetchMissing = true) {
 	return (
 			fetchJSON(
+				{forceCache: !fetchMissing},
 				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}`,
 				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}`
 			)
@@ -258,61 +260,14 @@ function updateData({daysAgo, days}) {
 
 			return [islandsJSON.islands[0].islanders.slice(0, MAX_NUMBER_OF_NODES), topics];
 		})
-		.then(([people, topics]) => ({nodes: getConnectionsForPeople(people), topics}))
-		.catch(function (e) {
-			ui.modal('.o-techdocs-main', `Error: ${e.message}`);
-			throw e;
-		});
+		.then(([people, topics]) => ({nodes: getConnectionsForPeople(people), topics}));
 }
-
-const stepSize = 1;
-const windowSize = 7;
-
-const configs = [];
-
-const daysOfTheWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const namesOfTheMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function stringifyDateNumber(n) {
 	const nString = String(n);
 	if (nString.length === 1) return "0" + nString;
 	return nString;
 }
-
-for (let i=0; i <= daysBack - windowSize; i+=stepSize) {
-	const date = new Date(Date.now() - 3600 * 24 * 1000 * (daysBack - i));
-
-	let config = {
-		days: windowSize,
-		date: {
-			dayOfWeek: daysOfTheWeek[date.getDay()],
-			date: stringifyDateNumber(date.getDate()),
-			monthName: namesOfTheMonths[date.getMonth()],
-			month: stringifyDateNumber(date.getMonth() + 1),
-			year: String(date.getFullYear())
-		}
-	};
-	config.date.apiFormat = `${config.date.year}-${config.date.month}-${config.date.date}`;
-	config.daysAgo = config.date.apiFormat;
-
-	configs.push(config);
-
-	// Stop if there is an endpoint set.
-	if (date.getTime() > dateTo) {
-		break;
-	}
-}
-
-if (!configs.length) throw Error('No Dates Selected');
-
-const topicQueue = [];
-setInterval(function() {
-	if (!topicQueue.length) return;
-	let item = topicQueue.shift();
-	item[0].classList[item[1]]('visible');
-}, 100);
-
-const renderInformationUI = !!document.querySelector('.information');
 
 function renderTopics(topicList) {
 	let listEl = document.querySelector('.topics_topic-list');
@@ -333,7 +288,75 @@ function renderTopics(topicList) {
 	});
 }
 
-module.exports.generator = function *dataGenerator() {
+/**
+ * Generate the config which the generator iterates over.
+ * Parameters can be overridden by parameters in the search string. E.g.
+ * http://ftlabs-six-degrees.herokuapp.com/graph.html?dateFrom=2015-07-05&dateTo=2015-07-08
+ * or
+ * http://ftlabs-six-degrees.herokuapp.com/graph.html?daysBack=18
+ *
+ * @param  {Integer} options.daysBack Number of days to go back
+ * @param  {Unix Timestamp} options.dateTo   Used for defining a date range
+ * @param  {Unix Timestamp} options.dateFrom Used for defining a date range
+ * @return void
+ */
+module.exports.init = function({daysBack, dateTo, dateFrom} = {}) {
+
+	let dateFromTo = location.search.match(/^\?dateFrom=(\d{4})-(\d{2})-(\d{2})(&dateTo=(\d{4})-(\d{2})-(\d{2}))?/);
+	if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
+		dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
+		if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
+			dateTo = new Date(dateFromTo[5], Number(dateFromTo[6]) - 1, dateFromTo[7]).getTime();
+		}
+	}
+
+	daysBack = location.search.match(/^\?daysBack=(\d+)/);
+	if (daysBack && daysBack[1]) {
+		daysBack = Number(daysBack[1]);
+	}
+
+	// if days back not set by the search string or the function arguments then
+	// daysBack is calculated using the dateFrom or if that it not set defaults
+	// to showing the whole range.
+	daysBack = daysBack || Math.floor((Date.now() - (dateFrom || TIME_DATA_COLLECTED_FROM)) / (24 * 3600 * 1000));
+
+	for (let i=0; i <= daysBack - windowSize; i+=stepSize) {
+		const date = new Date(Date.now() - 3600 * 24 * 1000 * (daysBack - i));
+
+		let config = {
+			days: windowSize,
+			date: {
+				dayOfWeek: daysOfTheWeek[date.getDay()],
+				date: stringifyDateNumber(date.getDate()),
+				monthName: namesOfTheMonths[date.getMonth()],
+				month: stringifyDateNumber(date.getMonth() + 1),
+				year: String(date.getFullYear())
+			}
+		};
+		config.date.apiFormat = `${config.date.year}-${config.date.month}-${config.date.date}`;
+		config.daysAgo = config.date.apiFormat;
+
+		configs.push(config);
+
+		// Stop if there is an endpoint set.
+		if (date.getTime() > dateTo) {
+			break;
+		}
+	}
+
+	if (!configs.length) throw Error('No Dates Selected');
+
+	setInterval(function() {
+		if (!topicQueue.length) return;
+		let item = topicQueue.shift();
+		item[0].classList[item[1]]('visible');
+	}, 100);
+};
+
+module.exports.populateCache = populateCache;
+module.exports.printCache = printCache;
+
+module.exports.generator = function *dataGenerator({fetchMissingData = true}) {
 
 	for (let config of configs) {
 
@@ -350,7 +373,7 @@ module.exports.generator = function *dataGenerator() {
 			break;
 		}
 
-		yield updateData(config)
+		yield updateData(config, fetchMissingData)
 			.then(({topics, nodes}) => {
 				if (renderInformationUI) {
 					renderTopics(topics);

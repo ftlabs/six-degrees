@@ -2,6 +2,9 @@
 /* global fetch */
 'use strict';
 
+require('babel/polyfill');
+const data = require('./lib/data.js');
+const graph = require('./lib/d3.js');
 
 function addScript(url) {
 	return new Promise(function (resolve, reject) {
@@ -16,24 +19,30 @@ function addScript(url) {
 Promise.all([
 	addScript('https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js'),
 	addScript('https://polyfill.webservices.ft.com/v1/polyfill.min.js?features=fetch,default')
-]).then(function () {
-
-	return addScript('./scripts/graph.js');
-
-}).then(function () {
-
+]).then(() => {
 	// wait about 20s then fetch the whole cache. ~3MB
 	setTimeout(function () {
 		fetch('./scripts/caches/everything.json')
 			.then(response => response.text())
 			.then(string => JSON.parse(string))
-			.then(json => window.populateCache(json));	
+			.then(json => data.populateCache(json));	
 	}, 20000);
 
 	// Load about 30 seconds now
 	return fetch('./scripts/caches/beginning.json')
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
-		.then(json => window.populateCache(json))
-		.then(() => window.graph());
+		.then(json => data.populateCache(json))
+		.then(() => {
+				data.init();
+				graph({
+					generator: data.generator,
+					place: '.graph-area',
+					width: document.querySelector('.graph-area').clientWidth,
+					height: document.querySelector('body').clientHeight,
+					fetchMissingData: false
+				});
+		});
+
+
 });

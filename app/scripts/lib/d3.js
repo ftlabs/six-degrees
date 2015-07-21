@@ -99,7 +99,10 @@ module.exports = function ({
 	generator,
 	width = 960,
 	height = 500,
-	place = 'body'
+	place = 'body',
+
+	// whether the generator should fetch data from the server if not in the cache
+	fetchMissingData = true,
 } = {}) {
 
 	/**
@@ -168,7 +171,7 @@ module.exports = function ({
 	}
 
 	let newItemInterval;
-	let iterator = generator();
+	let iterator = generator({fetchMissingData});
 	function getNewData() {
 
 		const {value, done} = iterator.next();
@@ -178,7 +181,16 @@ module.exports = function ({
 			return getNewData();
 		}
 
-		value.then(({nodes}) => processData(nodes));
+		value
+		.then(({nodes}) => processData(nodes))
+		.catch(e => {
+
+			// Error detected log the error and reset the generator.
+			console.log(e);
+			iterator = generator();
+			setTimeout(getNewData, 1000);
+			return;
+		});
 	}
 	window.getNewData = getNewData;
 
