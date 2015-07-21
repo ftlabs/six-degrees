@@ -25,27 +25,31 @@ Promise.all([
 		document.querySelector('.sorry-hero').classList.add('hidden');
 	});
 
-	// wait about 20s then fetch the whole cache. ~3MB
-	setTimeout(function () {
-		fetch('./scripts/caches/everything.json')
-			.then(response => response.text())
-			.then(string => JSON.parse(string))
-			.then(json => data.populateCache(json));	
-	}, 20000);
-
-	// Load about 30 seconds now
-	return fetch('./scripts/caches/beginning.json')
+	// Precache Responses
+	fetch('./caches/2015-05-01-2015-05-10.json')
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
 		.then(json => data.populateCache(json))
 		.then(() => {
-				data.init();
+				const dateRange = {
+					dateFrom: "2015-05-01",
+					dateTo: "2015-05-10"
+				};
+
+				data.init(dateRange);
 				graph({
 					generator: data.generator,
+					generatorOptions: {
+
+						// Do not fetch data for dates not
+						// in the cache
+						fetchMissingData: false,
+
+						// saveCacheWhenDone: dateRange
+					},
 					place: '.graph-area',
 					width: document.querySelector('.graph-area').clientWidth,
-					height: document.querySelector('body').clientHeight,
-					// fetchMissingData: false
+					height: document.querySelector('body').clientHeight
 				});
 		});
 

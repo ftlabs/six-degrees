@@ -118,7 +118,6 @@ function getOrCreatePerson(options) {
 const responseCache = new Map();
 function fetchJSON(options, ...urls) {
 	let modal = ui.modal('.o-techdocs-main', `Loading:<br /> ${urls.join('<br />')}`);
-	console.log('Loading: ', urls.join(',\n'));
 
 	if (typeof options === 'string') {
 		urls.unshift(options);
@@ -133,8 +132,10 @@ function fetchJSON(options, ...urls) {
 		} else {
 
 			if (options.forceCache) {
-				throw Error('Will not fetch fresh');
+				throw Error('Will not fetch fresh requests cache needs to be prepopulated');
 			}
+
+			console.log('Loading: ', url);
 
 			return fetch(url)
 				.then(response => response.text())
@@ -153,28 +154,42 @@ function fetchJSON(options, ...urls) {
 	});
 }
 
-function printCache() {
+/**
+ * Save the cache to a file
+ * @param  {string} dateFrom Reference start date format 2015-01-01
+ * @param  {string} dateTo   Reference end date format 2015-01-01
+ * @return {void}
+ */
+function printCache({dateFrom, dateTo}) {
+
+	if (!dateFrom || !dateTo) {
+		throw Error("Reference dates need to be defined for sensible output.");
+	}
 
 	const output = {};
 	Array.from(responseCache.keys()).forEach(i => {
 		output[i] = responseCache.get(i);
 	});
 
-    var downloadLink = document.createElement("a");
-    var blob = new Blob(["\ufeff", JSON.stringify(output)]);
-    var url = URL.createObjectURL(blob);
-    downloadLink.href = url;
-    downloadLink.download = "cache.json";
+	var downloadLink = document.createElement("a");
+	var blob = new Blob(["\ufeff", JSON.stringify({
+		dateFrom,
+		dateTo,
+		cacheContent: output
+	})]);
+	var url = URL.createObjectURL(blob);
+	downloadLink.href = url;
+	downloadLink.download = "cache.json";
 
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+	document.body.appendChild(downloadLink);
+	downloadLink.click();
+	document.body.removeChild(downloadLink);
 }
 
-function populateCache(urlToString) {
-	for (let url in urlToString) {
-		if (urlToString.hasOwnProperty(url)) {
-			responseCache.set(url, urlToString[url]);
+function populateCache(urlsToString) {
+	for (let url in urlsToString) {
+		if (urlsToString.hasOwnProperty(url)) {
+			responseCache.set(url, urlsToString[url]);
 		}
 	}
 }
@@ -299,17 +314,32 @@ function renderTopics(topicList) {
  */
 module.exports.init = function({daysBack, dateTo, dateFrom} = {}) {
 
-	let dateFromTo = location.search.match(/^\?dateFrom=(\d{4})-(\d{2})-(\d{2})(&dateTo=(\d{4})-(\d{2})-(\d{2}))?/);
-	if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
-		dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
-		if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
-			dateTo = new Date(dateFromTo[5], Number(dateFromTo[6]) - 1, dateFromTo[7]).getTime();
+	if (dateFrom) {
+		dateFrom = dateFrom.match(/^(\d{4})-(\d{2})-(\d{2})/);
+		if (!dateFrom) throw Error("Invalid dateFrom format needs to be like: 2015-07-18");
+		dateFrom = new Date(dateFrom[1], Number(dateFrom[2]) - 1, dateFrom[3]).getTime();
+
+		if (dateTo) {
+			dateTo = dateTo.match(/^(\d{4})-(\d{2})-(\d{2})/);
+			if (!dateTo) throw Error("Invalid dateTo format needs to be like: 2015-07-18");
+			dateTo = new Date(dateTo[1], Number(dateTo[2]) - 1, dateTo[3]).getTime();
+		}
+	} else {
+
+		let dateFromTo = location.search.match(/^\?dateFrom=(\d{4})-(\d{2})-(\d{2})(&dateTo=(\d{4})-(\d{2})-(\d{2}))?/);
+		if (dateFromTo && dateFromTo[1] && dateFromTo[2] && dateFromTo[3]){
+			dateFrom = new Date(dateFromTo[1], Number(dateFromTo[2]) - 1, dateFromTo[3]).getTime();
+			if (dateFromTo && dateFromTo[5] && dateFromTo[6] && dateFromTo[7]){
+				dateTo = new Date(dateFromTo[5], Number(dateFromTo[6]) - 1, dateFromTo[7]).getTime();
+			}
 		}
 	}
 
-	daysBack = location.search.match(/^\?daysBack=(\d+)/);
-	if (daysBack && daysBack[1]) {
-		daysBack = Number(daysBack[1]);
+	if (!daysBack) {
+		daysBack = location.search.match(/^\?daysBack=(\d+)/);
+		if (daysBack && daysBack[1]) {
+			daysBack = Number(daysBack[1]);
+		}
 	}
 
 	// if days back not set by the search string or the function arguments then
@@ -353,7 +383,7 @@ module.exports.init = function({daysBack, dateTo, dateFrom} = {}) {
 module.exports.populateCache = populateCache;
 module.exports.printCache = printCache;
 
-module.exports.generator = function *dataGenerator({fetchMissingData = true} = {}) {
+module.exports.generator = function *dataGenerator({fetchMissingData = true, saveCacheWhenDone = false} = {}) {
 
 	for (let config of configs) {
 
@@ -377,5 +407,9 @@ module.exports.generator = function *dataGenerator({fetchMissingData = true} = {
 				}
 				return nodes;
 			});
+	}
+
+	if (saveCacheWhenDone) {
+		printCache(saveCacheWhenDone);
 	}
 };

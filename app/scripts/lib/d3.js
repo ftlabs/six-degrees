@@ -97,12 +97,11 @@ const settings = {
  */
 module.exports = function ({
 	generator,
+	generatorOptions,
 	width = 960,
 	height = 500,
-	place = 'body',
+	place = 'body'
 
-	// whether the generator should fetch data from the server if not in the cache
-	fetchMissingData = true,
 } = {}) {
 
 	/**
@@ -171,7 +170,7 @@ module.exports = function ({
 	}
 
 	let newItemInterval;
-	let iterator = generator({fetchMissingData});
+	let iterator = generator(generatorOptions);
 	function getNewData() {
 
 		const {value, done} = iterator.next();
@@ -187,7 +186,7 @@ module.exports = function ({
 
 			// Error detected log the error and reset the generator.
 			console.log(e);
-			iterator = generator();
+			iterator = generator(generatorOptions);
 			setTimeout(getNewData, 1000);
 			return;
 		});
