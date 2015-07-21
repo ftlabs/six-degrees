@@ -1,5 +1,4 @@
 /* jshint browser:true */
-/* global fetch */
 'use strict';
 
 require('babel/polyfill');
@@ -25,37 +24,46 @@ Promise.all([
 		document.querySelector('.sorry-hero').classList.add('hidden');
 	});
 
-	// Precache Responses
-	fetch('./caches/2015-05-01-2015-05-10.json')
-		.then(response => response.text())
-		.then(string => JSON.parse(string))
-		.then(json => (data.populateCache(json.cachedResponses), json))
-		.then(json => {
+	// Precache Responses then run do notallow trying to fetch fresh data
+	const json = require('../caches/2015-04-01-2015-06-01.json');
 
-				// fetch dateFrom and dateTo information from the cache file
-				let {dateFrom, dateTo} = json;
+	data.populateCache(json.cachedResponses);
 
-				const dateRange = {
-					dateFrom,
-					dateTo
-				};
+	// fetch dateFrom and dateTo information from the cache file
+	let {dateFrom, dateTo} = json;
 
-				data.init(dateRange);
-				graph({
-					generator: data.generator,
-					generatorOptions: {
+	const dateRange = {dateFrom, dateTo};
 
-						// Do not fetch data for dates not
-						// in the cache
-						fetchMissingData: false,
+	data.init(dateRange);
+	graph({
+		generator: data.generator,
+		generatorOptions: {
 
-						// saveCacheWhenDone: dateRange
-					},
-					place: '.graph-area',
-					width: document.querySelector('.graph-area').clientWidth,
-					height: document.querySelector('body').clientHeight
-				});
-		});
+			// Do not fetch data for dates not
+			// in the cache
+			fetchMissingData: false
+		},
+		place: '.graph-area',
+		width: document.querySelector('.graph-area').clientWidth,
+		height: document.querySelector('body').clientHeight
+	});
 
 
+	// Run the demo caching responses then save to a file at the end.
+
+	// const dateRange = {dateFrom: "2015-04-01", dateTo: "2015-06-01"};
+
+	// data.init(dateRange);
+	// graph({
+	// 	generator: data.generator,
+	// 	generatorOptions: {
+
+	// 		// Once it has loaded save the cache to a new file with
+	// 		// the dateRange set to the dateRange which was loaded.
+	// 		saveCacheWhenDone: dateRange
+	// 	},
+	// 	place: '.graph-area',
+	// 	width: document.querySelector('.graph-area').clientWidth,
+	// 	height: document.querySelector('body').clientHeight
+	// });
 });

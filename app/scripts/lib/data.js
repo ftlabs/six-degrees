@@ -213,7 +213,7 @@ function updateData({daysAgo, days}, fetchMissing = true) {
 			fetchJSON(
 				{forceCache: !fetchMissing},
 				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/erdos_islands_of/people/with_connectivity/just_top_10?slice=${daysAgo},${days}&uncompressed=true`,
-				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}&uncompressed=true`
+				'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com' + `/metadatums_freq/by_type/primaryTheme/by_type?slice=${daysAgo},${days}`
 			)
 		)
 		.then(function([islandsJSON, topicsJson]) {
