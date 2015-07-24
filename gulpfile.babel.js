@@ -144,7 +144,8 @@ gulp.task('fonts', () => {
 gulp.task('extras', () => {
 	return gulp.src([
 		'app/*.*',
-		'!app/*.html'
+		'!app/*.html',
+		'app/**/*.json'
 	], {
 		dot: true
 	}).pipe(gulp.dest('dist'));
@@ -155,6 +156,19 @@ gulp.task('copy-tmp', ['browserify'], () => {
 		'.tmp/**/*.{js,css}'
 	])
 	.pipe(gulp.dest('dist'));
+});
+
+gulp.task('copy-tmp:dist', ['browserify'], () => {
+	return Promise.all([gulp.src([
+			'.tmp/**/*.css'
+		])
+		.pipe(gulp.dest('dist')),
+		gulp.src([
+			'.tmp/**/*.js'
+		])
+		.pipe($.uglify())
+		.pipe(gulp.dest('dist'))
+	]);
 });
 
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
@@ -229,8 +243,8 @@ gulp.task('wiredep', () => {
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
 		.pipe(require('gulp-gh-pages')({
-			origin: 'https://git.heroku.com/ftlabs-six-degrees.git',
-			remoteUrl: 'https://git.heroku.com/ftlabs-six-degrees.git',
+			origin: 'https://git.heroku.com/ftlabs-six-degrees-404.git',
+			remoteUrl: 'https://git.heroku.com/ftlabs-six-degrees-404.git',
 			branch: 'master'
 		}));
 });
@@ -239,7 +253,7 @@ gulp.task('deploy', ['build'], function () {
 	return gulp.start('ship');
 });
 
-gulp.task('build', ['copy-tmp', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['copy-tmp:dist', 'html', 'images', 'fonts', 'extras'], () => {
 	return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 

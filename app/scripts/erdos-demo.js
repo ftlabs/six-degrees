@@ -9,7 +9,7 @@ var dom = {
 	txtendperson: document.querySelector('#txtendperson'),
 	errormsg: document.querySelector('#errormsg'),
 	result: document.querySelector('#result'),
-	peoplecount: document.querySelector('#people-count'),
+	peoplecount: document.querySelector('#people-count')
 };
 
 fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
@@ -47,7 +47,7 @@ function renderErdos(from, to) {
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
 		.then(function(data) {
-			if (!('chain' in data)) throw new Error ("No chain");
+			if (!('chain' in data)) throw new Error("No chain");
 			dom.errormsg.classList.remove('visible');
 			dom.result.innerHTML = `<li class='person'>${detagify(from)}</li>` +
 				data.fleshed_out_chain.map(rel => {

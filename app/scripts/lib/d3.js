@@ -6,6 +6,7 @@
 'use strict';
 const ENERGY = 0.1;
 const NODE_ADD_PERIOD = 200;
+const renderInformationUI = !!document.querySelector('.information');
 
 const settings = {
 	display: {
@@ -66,7 +67,7 @@ const settings = {
 		affectedByCoocurence: {
 			value: 0,
 			range: [0, 1]
-		},
+		}
 	},
 	gravity: {
 		description: 'Force drawing all nodes to the center',
@@ -81,24 +82,26 @@ const settings = {
 			value: 0.5,
 			range: [0, 1, 0.05]
 		}
-	},
+	}
 };
 
 
 /**
  * This is what draws the graph using D3.
- * 
+ *
  * @param  {[type]} options.generator [Required] A generator which produces an iterator, the iterator should output {[Person]}
  * @param  {Number} options.width     Width of the display port
  * @param  {Number} options.height    Height of the display port
  * @param  {String} options.place     Selector to determine where to place the D3 SVG in the body.
- * @return {void}                   
+ * @return {void}
  */
 module.exports = function ({
 	generator,
+	generatorOptions,
 	width = 960,
 	height = 500,
 	place = 'body'
+
 } = {}) {
 
 	/**
@@ -160,25 +163,45 @@ module.exports = function ({
 			.style('display', l => (l.source.drawLink && l.target.drawLink) || settings.display.showAllLinks.value ? 'inline' : 'none');
 		svg.selectAll('.node-circle')
 			.style('stroke', n => n.highlight ? '#F64' : '#FFF')
-			.style('stroke-width',n => n.highlight ? 5 : 3)
+			.style('stroke-width', n => n.highlight ? 5 : 3)
 			.style('fill', n => n.isRoot ? '#F64' : '#555')
 			.transition().duration(200).attr("r", n => (Math.sqrt(n.numberOfOccurences) * 6 + 3) / (n.age === false ? 1 : n.age));
 		renderVisibleNames();
 	}
 
 	let newItemInterval;
-	let iterator = generator();
+	let iterator = generator(generatorOptions);
 	function getNewData() {
 
 		const {value, done} = iterator.next();
 		if (done) {
+			clearData();
 			iterator = generator();
 			return getNewData();
 		}
 
-		value.then(({nodes}) => processData(nodes));
+		value
+		.then(({nodes}) => processData(nodes))
+		.catch(e => {
+
+			// Error detected log the error and reset the generator.
+			console.log(e);
+			iterator = generator(generatorOptions);
+			setTimeout(getNewData, 1000);
+			return;
+		});
 	}
 	window.getNewData = getNewData;
+
+	function clearData() {
+		const forceNodes = force.nodes();
+		forceNodes.forEach(n => {
+			n.age = undefined;
+		});
+		forceNodes.splice(0);
+		renderPoints();
+		renderLinks();
+	}
 
 	function processData(newNodes) {
 		buildUi(newNodes);
@@ -254,7 +277,7 @@ module.exports = function ({
 		// Add nodes not already in the graph
 		let nodesToRender = new Set(newNodes.filter(n => forceNodes.indexOf(n) === -1));
 
-		let i = (function *nextNodeToRender() {
+		let nextNodeToAddIterator = (function *nextNodeToRender() {
 			while(nodeBuffer.size || nodesToRender.size) {
 				let n = (nodeBuffer.size ? nodeBuffer : nodesToRender).values().next().value;
 				nodeBuffer.delete(n);
@@ -269,7 +292,7 @@ module.exports = function ({
 		newItemInterval = setInterval(function () {
 
 			// Add the nodes
-			const {value, done} = i.next();
+			const {value, done} = nextNodeToAddIterator.next();
 			if (done) {
 
 				// Give the graph a jiggle after the last node added
@@ -309,10 +332,10 @@ module.exports = function ({
 			.append('svg:g')
 			.attr('class', 'node')
 			.append('svg:circle')
-			.attr("r", 0) 
+			.attr("r", 0)
 			.attr('class', 'node-circle')
 			.on('mouseenter', function (n) {
-				console.log(n.name, ':', Array.from(n.connections).map(n => n.name).join(', '));
+
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = true;
 				n.drawLink = true;
@@ -321,12 +344,25 @@ module.exports = function ({
 				updateDisplay();
 			})
 			.on('mouseleave', function (n) {
+
 				if (settings.display.showAllNames.value && settings.display.showAllLinks.value) return;
 				n.drawName = false;
 				n.drawLink = false;
 				n.getConnections().forEach(p => p.drawName = false);
 				n.getConnections().forEach(p => p.drawLink = false);
 				updateDisplay();
+			})
+			.on('mousedown', function (n) {
+				n.clickImminent = true;
+				setTimeout(function () {
+					n.clickImminent = false;
+				}, 200);
+			})
+			.on('mouseup', function (n) {
+				if (n.clickImminent) {
+					console.log(n.id);
+					location.assign('http://search.ft.com/search?f=' + encodeURIComponent(`people["${n.name.replace(/ /g, '+')}"]`));
+				}
 			});
 
 		node.call(drag);
@@ -352,7 +388,7 @@ module.exports = function ({
 					target: n2,
 					source: n,
 					weight: n.normalizedConnectionWeights.get(n2),
-					id: n2.name + '_' + n.name 
+					id: n2.name + '_' + n.name
 				});
 			});
 		});
@@ -365,10 +401,7 @@ module.exports = function ({
 			.style('stroke', '#000')
 			.style('stroke-width', l => (l.weight * 5) * 0.8 + 0.2)
 			.style('opacity', l => (l.weight * 5) * 0.8 + 0.2)
-			.style('display', 'none')
-			.on('mouseenter', function (l) {
-				console.log(l.target.name, '<--->', l.source.name);
-			});
+			.style('display', 'none');
 		link.exit().remove();
 	}
 
@@ -476,12 +509,12 @@ module.exports = function ({
 
 		function camelToPretty(str) {return str.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase(); }
 
-		document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
+		if (renderInformationUI) document.querySelector(".person-of-interest-target").innerHTML = newNodes[0] ? newNodes[0].name : '';
 
 		let slidersHTML = "";
 
 		for (let i in settings) {
-        	if (settings.hasOwnProperty(i)) {
+			if (settings.hasOwnProperty(i)) {
 				let actionName = i;
 				let actionSettings = settings[i];
 
@@ -489,7 +522,7 @@ module.exports = function ({
 				slidersHTML += `<div class="o-techdocs-card__subtitle">${actionSettings.description}</div>`;
 
 				for (let j in actionSettings) {
-	        		if (j !== 'description' && actionSettings.hasOwnProperty(j)) {
+					if (j !== 'description' && actionSettings.hasOwnProperty(j)) {
 						let tweakName = j;
 						let tweakSettings = actionSettings[j];
 

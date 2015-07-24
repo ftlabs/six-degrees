@@ -1,6 +1,85 @@
 // bower:scss
 // endbower
 
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-Light.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:200;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-LightItalic.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:200;
+	font-style:italic
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-Semibold.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:600;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-Medium.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:500;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-Regular.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:400;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/MetricWeb-Bold.woff?#iefix) format("woff");
+	font-family:MetricWeb;
+	font-weight:700;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/FinancierDisplayWeb-LightItalic.woff?#iefix) format("woff");
+	font-family:FinancierDisplayWeb;
+	font-weight:200;
+	font-style:italic
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/FinancierDisplayWeb-MediumItalic.woff?#iefix) format("woff");
+	font-family:FinancierDisplayWeb;
+	font-weight:500;
+	font-style:italic
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/FinancierDisplayWeb-SemiboldItalic.woff?#iefix) format("woff");
+	font-family:FinancierDisplayWeb;
+	font-weight:600;
+	font-style:italic
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/FinancierDisplayWeb-Regular.woff?#iefix) format("woff");
+	font-family:FinancierDisplayWeb;
+	font-weight:400;
+	font-style:normal
+}
+
+@font-face {
+	src: url(https://next-geebee.ft.com/build/files/o-fonts-assets@1.2.0/FinancierTextWeb-Regular.woff?#iefix) format("woff");
+	font-family:FinancierTextWeb;
+	font-weight:400;
+	font-style:normal
+}
+
+$ft-background-color: #FFF1E0;
+
 body, html {
 	margin: 0;
 	height: 100%;
@@ -47,6 +126,10 @@ body, html {
 	font-weight: bold;
 	pointer-events: none;
 	font-family: BentonSans, helvetica, sans;
+}
+
+.node-circle {
+	cursor: pointer;
 }
 
 .erdos {
@@ -168,6 +251,52 @@ body, html {
 .graph-area {
 	overflow: hidden;
 	flex: 4 0 auto;
+}
+
+.four-oh-four {
+	background: $ft-background-color;
+	font-family: MetricWeb, sans-serif;
+
+	.sorry-hero {
+		position: absolute;
+		padding: 1em;
+		top: 20%;
+		background-color: rgba($ft-background-color, 0.9);
+		border-bottom: 1px solid #333;
+
+		.sorry-hero_title {
+			font-size: 26px;
+			line-height: 27px;
+			font-family: MetricWeb,sans-serif;
+			font-weight: 200;
+		}
+
+		.sorry-hero_subtitle {
+			font-family: FinancierDisplayWeb, serif;
+			border-left: 1px solid #333;
+			padding-left: 1em;
+			font-style: italic;
+			font-weight: 200;
+			font-size: 20px;
+		}
+
+		.hide-overlay {
+			float: right;
+			padding: 0.2em 0.4em;
+			border: 1px solid black;
+			margin: 0.2em;
+			cursor: pointer;
+		}
+
+		&.hidden {
+			transition: transform ease 500ms;
+			transform: translateY(-100%);
+		}
+	}
+}
+
+.core .needs-cut-mustard {
+	display: none;
 }
 
 .information {
