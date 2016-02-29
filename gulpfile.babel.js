@@ -242,11 +242,7 @@ gulp.task('wiredep', () => {
 
 gulp.task('ship', function () {
 	return gulp.src('./dist/**/*')
-		.pipe(require('gulp-gh-pages')({
-			origin: 'https://git.heroku.com/ftlabs-six-degrees-404.git',
-			remoteUrl: 'https://git.heroku.com/ftlabs-six-degrees-404.git',
-			branch: 'master'
-		}));
+		.pipe(require('gulp-gh-pages')());
 });
 
 gulp.task('deploy', ['build'], function () {
