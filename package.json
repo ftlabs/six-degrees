@@ -47,6 +47,7 @@
   "scripts": {
     "postinstall": "bower install",
     "build": "gulp build",
-    "deploy": "gulp deploy"
+    "deploy": "gulp deploy",
+    "start": "gulp serve"
   }
 }

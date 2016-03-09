@@ -2,10 +2,10 @@
 
 
 To build the application:
-`gulp build`
+`npm run build`
 
 To serve the application locally:
-`gulp serve`
+`npm start`
 
 To deploy the application:
-`gulp deploy`
+`npm run deploy`
