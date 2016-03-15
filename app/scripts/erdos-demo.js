@@ -9,16 +9,32 @@ var dom = {
 	txtendperson: document.querySelector('#txtendperson'),
 	errormsg: document.querySelector('#errormsg'),
 	result: document.querySelector('#result'),
-	peoplecount: document.querySelector('#people-count')
+	peoplecount: document.querySelector('#people-count'),
+	fromtoexample: document.querySelector('#from-to-example'),
+	fromtoexample2: document.querySelector('#from-to-example2')
 };
 
 var slurpApp = 'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com';
 
 fetch(`${slurpApp}/metadatums/by_type/people`)
+.then(response => response.text())
+.then(string => JSON.parse(string))
+.then(json => json.metadatums_by_type.people)
+.then(function (people) {
+
+	fetch(`${slurpApp}/erdos_islands_of/people`)
 	.then(response => response.text())
-	.then(string => JSON.parse(string))
-	.then(json => json.metadatums_by_type.people)
-	.then(function (people) {
+	.then(string   => JSON.parse(string))
+	.then(json     => json.islands)
+	.then(function (islands) {
+		var islanders                = islands[0].islanders;
+		var mostConnectedPerson      = islanders[0][0];
+		var leastConnectedPerson     = islanders[islanders.length-1][0];
+		dom.fromtoexample.innerHTML  = "<a href='erdos.html?from=" + encodeURIComponent(mostConnectedPerson) + "&amp;to=" + encodeURIComponent(leastConnectedPerson) + "'>" + detagify(mostConnectedPerson) + " to " + detagify(leastConnectedPerson) + "</a>";
+
+		var randomPerson1            = islanders[Math.floor(Math.random()*islanders.length)][0];
+		var randomPerson2            = islanders[Math.floor(Math.random()*islanders.length)][0];
+		dom.fromtoexample2.innerHTML = "<a href='erdos.html?from=" + encodeURIComponent(randomPerson1) + "&amp;to=" + encodeURIComponent(randomPerson2) + "'>" + detagify(randomPerson1) + " to " + detagify(randomPerson2) + "</a>";
 
 		// ['people:Joe Bloggs', 'people:Adam Smith', 'people:Milton Friedman', ...]
 
@@ -41,7 +57,8 @@ fetch(`${slurpApp}/metadatums/by_type/people`)
 			dom.txtendperson.value = detagify(qs.to);
 			renderErdos(qs.from, qs.to);
 		}
-	})
+	});
+});
 ;
 
 function renderErdos(from, to) {
