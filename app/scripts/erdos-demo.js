@@ -12,7 +12,9 @@ var dom = {
 	peoplecount: document.querySelector('#people-count')
 };
 
-fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
+var slurpApp = 'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com';
+
+fetch(`${slurpApp}/metadatums/by_type/people`)
 	.then(response => response.text())
 	.then(string => JSON.parse(string))
 	.then(json => json.metadatums_by_type.people)
@@ -43,7 +45,7 @@ fetch('https://ftlabs-sapi-capi-slurp.herokuapp.com/metadatums/by_type/people')
 ;
 
 function renderErdos(from, to) {
-	fetch(`https://ftlabs-sapi-capi-slurp.herokuapp.com/erdos_between/${from}/${to}`)
+	fetch(`${slurpApp}/erdos_between/${from}/${to}`)
 		.then(response => response.text())
 		.then(string => JSON.parse(string))
 		.then(function(data) {
