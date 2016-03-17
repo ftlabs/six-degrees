@@ -10,54 +10,54 @@ var dom = {
 	errormsg: document.querySelector('#errormsg'),
 	result: document.querySelector('#result'),
 	peoplecount: document.querySelector('#people-count'),
+	biggestislandcount: document.querySelector('#biggest-island-count'),
+	nextbiggestislandcount: document.querySelector('#next-biggest-island-count'),
+	isolatedcount: document.querySelector('#isolated-count'),
 	fromtoexample: document.querySelector('#from-to-example'),
 	fromtoexample2: document.querySelector('#from-to-example2')
 };
 
 var slurpApp = 'https://ftlabs-sapi-capi-slurp-slice.herokuapp.com';
 
-fetch(`${slurpApp}/metadatums/by_type/people`)
+fetch(`${slurpApp}/erdos_islands_of/people`)
 .then(response => response.text())
-.then(string => JSON.parse(string))
-.then(json => json.metadatums_by_type.people)
-.then(function (people) {
+.then(string   => JSON.parse(string))
+.then(function (json) {
+	var islands                  = json.islands;
+	var islanders                = islands[0].islanders;
+	var mostConnectedPerson      = islanders[0][0];
+	var leastConnectedPerson     = islanders[islanders.length-1][0];
+	dom.fromtoexample.innerHTML  = "<a href='erdos.html?from=" + encodeURIComponent(mostConnectedPerson) + "&amp;to=" + encodeURIComponent(leastConnectedPerson) + "'>" + detagify(mostConnectedPerson) + " to " + detagify(leastConnectedPerson) + "</a>";
 
-	fetch(`${slurpApp}/erdos_islands_of/people`)
-	.then(response => response.text())
-	.then(string   => JSON.parse(string))
-	.then(json     => json.islands)
-	.then(function (islands) {
-		var islanders                = islands[0].islanders;
-		var mostConnectedPerson      = islanders[0][0];
-		var leastConnectedPerson     = islanders[islanders.length-1][0];
-		dom.fromtoexample.innerHTML  = "<a href='erdos.html?from=" + encodeURIComponent(mostConnectedPerson) + "&amp;to=" + encodeURIComponent(leastConnectedPerson) + "'>" + detagify(mostConnectedPerson) + " to " + detagify(leastConnectedPerson) + "</a>";
+	var randomPerson1            = islanders[Math.floor(Math.random()*islanders.length)][0];
+	var randomPerson2            = islanders[Math.floor(Math.random()*islanders.length)][0];
+	dom.fromtoexample2.innerHTML = "<a href='erdos.html?from=" + encodeURIComponent(randomPerson1) + "&amp;to=" + encodeURIComponent(randomPerson2) + "'>" + detagify(randomPerson1) + " to " + detagify(randomPerson2) + "</a>";
 
-		var randomPerson1            = islanders[Math.floor(Math.random()*islanders.length)][0];
-		var randomPerson2            = islanders[Math.floor(Math.random()*islanders.length)][0];
-		dom.fromtoexample2.innerHTML = "<a href='erdos.html?from=" + encodeURIComponent(randomPerson1) + "&amp;to=" + encodeURIComponent(randomPerson2) + "'>" + detagify(randomPerson1) + " to " + detagify(randomPerson2) + "</a>";
+	// ['people:Joe Bloggs', 'people:Adam Smith', 'people:Milton Friedman', ...]
 
-		// ['people:Joe Bloggs', 'people:Adam Smith', 'people:Milton Friedman', ...]
-
-		dom.datalist.innerHTML = people.map(p => '<option value="'+detagify(p)+'">').join('');
-		dom.peoplecount.innerHTML = people.length;
-		dom.form.addEventListener('submit', function (e) {
-			e.preventDefault();
-			let from = tagify(dom.txtstartperson.value);
-			let to = tagify(dom.txtendperson.value);
-			if (from && to) renderErdos(from, to);
-		});
-
-		var qs = location.search.slice(1).split('&').reduce(function (acc, el) {
-			var [key, val] = el.split('=');
-			acc[key] = val;
-			return acc;
-		}, {});
-		if ('from' in qs && 'to' in qs) {
-			dom.txtstartperson.value = detagify(qs.from);
-			dom.txtendperson.value = detagify(qs.to);
-			renderErdos(qs.from, qs.to);
-		}
+	dom.datalist.innerHTML               = islands[0].islanders.map(p => '<option value="'+detagify(p[0])+'">').join('');
+	dom.peoplecount.innerHTML            = json.total_population;
+	dom.biggestislandcount.innerHTML     = islands[0].population_size;
+	dom.nextbiggestislandcount.innerHTML = islands[1].population_size;
+	dom.isolatedcount.innerHTML          = json.num_isolateds;
+	
+	dom.form.addEventListener('submit', function (e) {
+		e.preventDefault();
+		let from = tagify(dom.txtstartperson.value);
+		let to = tagify(dom.txtendperson.value);
+		if (from && to) renderErdos(from, to);
 	});
+
+	var qs = location.search.slice(1).split('&').reduce(function (acc, el) {
+		var [key, val] = el.split('=');
+		acc[key] = val;
+		return acc;
+	}, {});
+	if ('from' in qs && 'to' in qs) {
+		dom.txtstartperson.value = detagify(qs.from);
+		dom.txtendperson.value = detagify(qs.to);
+		renderErdos(qs.from, qs.to);
+	}
 });
 ;
 
